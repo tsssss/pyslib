@@ -2,6 +2,9 @@ import numpy as np
 import datetime
 import dateutil.parser
 import cdflib
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import string
 
 #---Time conversion. All times are in UTC.
 # internally save time as (whole ut sec, fractional ut sec up to pica sec accuracy).
@@ -87,6 +90,32 @@ class ut(object):
     def __getitem__(self, item):
         return self.t_ep16[item].real+self.t_ep16[item].imag
 
+    def __eq__(self, other):
+        if type(other) == ut: return self.t_ep16 == other.t_ep16
+        elif np.iscomplex(other): return self.t_ep16 == other
+        else: return self.ut() == other
+
+    def __lt__(self, other):
+        if type(other) == ut: return self.t_ep16 < other.t_ep16
+        elif np.iscomplex(other): return self.t_ep16 < other
+        else: return self.ut() < other
+    def __le__(self, other):
+        if type(other) == ut: return self.t_ep16 <= other.t_ep16
+        elif np.iscomplex(other): return self.t_ep16 <= other
+        else: return self.ut() <= other
+
+    def __gt__(self, other):
+        if type(other) == ut: return self.t_ep16 > other.t_ep16
+        elif np.iscomplex(other): return self.t_ep16 > other
+        else: return self.ut() > other
+    def __ge__(self, other):
+        if type(other) == ut: return self.t_ep16 >= other.t_ep16
+        elif np.iscomplex(other): return self.t_ep16 >= other
+        else: return self.ut() >= other
+
+    def __len__(self):
+        return len(self.t_ep16)
+
 #    def __add__(self, other):
 #        return ut(self.t_ep16.real+self.t_ep16.imag+other)
 #    def __sub__(self, other):
@@ -136,3 +165,115 @@ class ut(object):
         return t_datetime
 
 
+#---Hold, plot, data.
+class sdata(object):
+
+    def __init__(self, data={}, vatt={}):
+        self.data = data
+        self.vatt = vatt
+
+    def __getitem__(self, item):
+        print('return '+item+' in data')
+        return self.data[item]
+
+    def plot(self, vars, bots=[''], figsize=(6,4), xrange=[0,0]):
+
+        if type(vars) == str: vars = [vars]
+        nvar = len(vars)
+
+        # default settings.
+        mpl.rcParams['lines.linewidth'] = 0.5
+        mpl.rcParams['xtick.top'] = True
+        mpl.rcParams['xtick.bottom'] = True
+        mpl.rcParams['xtick.direction'] = 'out'
+        mpl.rcParams['xtick.major.size'] = 4
+        mpl.rcParams['xtick.minor.visible'] = True
+        mpl.rcParams['xtick.minor.top'] = True
+        mpl.rcParams['xtick.minor.bottom'] = True
+        mpl.rcParams['xtick.minor.size'] = 2
+        mpl.rcParams['ytick.left'] = True
+        mpl.rcParams['ytick.right'] = True
+        mpl.rcParams['ytick.direction'] = 'out'
+        mpl.rcParams['ytick.major.size'] = 4
+        mpl.rcParams['ytick.minor.visible'] = True
+        mpl.rcParams['ytick.minor.left'] = True
+        mpl.rcParams['ytick.minor.right'] = True
+        mpl.rcParams['ytick.minor.size'] = 2
+        mpl.rcParams['axes.grid'] = 'on'
+        mpl.rcParams['grid.alpha'] = 0.5
+        mpl.rcParams['grid.linewidth'] = 0.5
+        mpl.rcParams['legend.frameon'] = False
+        mpl.rcParams['legend.loc'] = 'center left'
+        mpl.rcParams['legend.handlelength'] = 0
+        mpl.rcParams['legend.handletextpad'] = 0
+
+
+        fig = plt.figure(figsize=figsize)
+        grid = plt.GridSpec(nvar, 1, hspace=0.1)
+        grid.update(left=0.2, right=0.8, top=0.95, bottom=0.15)
+        axes = []
+
+        for i, var in enumerate(vars):
+            axes.append(fig.add_subplot(grid[i]))
+            y = self.data[var]
+            try:
+                tvar = self.vatt[var]['depend_0']
+                x = self.data[tvar]
+            except:
+                x = np.arange(len(x.shape[0]))
+
+            display_type = self.vatt[var]['display_type']
+            if display_type == 'scalar':
+                pass
+            elif display_type == 'vector':
+                ndim = y.shape[1]
+                try:
+                    colors = self.vatt[var]['colors']
+                except:
+                    if ndim == 3:
+                        colors = ['red','green','blue']
+                    else:
+                        pass
+                        #colors = plt.rcParams['axes.prop_cycle']
+                try:
+                    legend = self.vatt[var]['legend']
+                except:
+                    legend = [''] * ndim
+                try:
+                    ylabel = self.vatt[var]['ylabel']
+                except:
+                    ylabel = ''
+
+            for j in range(ndim):
+                # add lines.
+                axes[-1].plot(x, y[:,j], color=colors[j], label=legend[j])
+                # add y-title.
+                axes[-1].set(ylabel=ylabel)
+                # add legend to the right of the panel.
+                leg = axes[-1].legend(bbox_to_anchor=(1, 0.5))
+                for text, color in zip(leg.get_texts(), colors): text.set_color(color)
+
+        # apply axis xrange in the end, otherwise it won't work.
+        for i in range(1,len(axes)):
+            axes[i].get_shared_x_axes().join(axes[i], axes[0])
+        if xrange[0] == xrange[1]:
+            xrange = [x.min(), x.max()]
+        axes[0].set(xlim=[xrange[0], xrange[1]])
+
+
+        # add panel labels.
+        # use text instead of annotation to tied the text to axes.
+        panlabs = string.ascii_lowercase
+        panlabs = panlabs[0:len(axes)]
+        panlab_offset = 12
+        for i, ax in enumerate(axes):
+            ax.text(0,1, panlabs[i]+'.'+' '*panlab_offset, va='top', ha='right', transform=ax.transAxes)
+
+
+        # suppress xlabel.
+        for ax in axes:
+            ax.xaxis.set_major_formatter(plt.NullFormatter())
+
+        # treat bottom labels.
+        if bots[0] == '':
+            pass

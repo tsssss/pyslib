@@ -6,9 +6,8 @@ import requests
 import email.utils as eut
 import time
 import datetime
-import dateutil.parser
-import cdflib
 import numpy as np
+import datatype
 
 
 #---Plotting variable.
@@ -22,6 +21,9 @@ class sgVar(object):
 # Prepare file names to be passed in getfile.
 # Replace patterns with given times.
 def prepfile(utr0, pattern, dt=86400.):
+
+    if type(utr0) == datatype.ut:
+        utr0 = utr0.ut()
     if len(utr0) == 1:
         utr1 = utr0+[0,dt]
     elif len(utr0) == 2:
