@@ -88,12 +88,6 @@ def t96(iopt,parmod,ps,x,y,z):
         rimfy=rimfys*ct+rimfzs*st
         rimfz=rimfzs*ct-rimfys*st
 
-        print('dipshld', cfx,cfy,cfz)
-        print('tailrc96', bxrc,byrc,bzrc, bxt2,byt2,bzt2, bxt3,byt3,bzt3)
-        print('birk1tot_02', r1x,r1y,r1z)
-        print('birk2tot_02', r2x,r2y,r2z)
-        print('intercon', rimfx,rimfy,rimfz)
-
         fx=cfx*xappa3 + rcampl*bxrc + tampl2*bxt2+tampl3*bxt3+b1ampl*r1x +b2ampl*r2x +rimfampl*rimfx
         fy=cfy*xappa3 + rcampl*byrc + tampl2*byt2+tampl3*byt3+b1ampl*r1y +b2ampl*r2y +rimfampl*rimfy
         fz=cfz*xappa3 + rcampl*bzrc + tampl2*bzt2+tampl3*bzt3+b1ampl*r1z +b2ampl*r2z +rimfampl*rimfz
@@ -1889,10 +1883,3 @@ def dipole(ps, x,y,z):
     bz = q*((p+t-2*u)*cps-v*sps)
 
     return bx,by,bz
-
-
-ps = -0.533585131
-x,y,z = [-5.1,0.3,2.8]
-par = [2, -78, 2, -5, 0,0, ps, x,y,z]
-bx,by,bz = t96(0, par, ps, x,y,z)
-print(bx,by,bz)
