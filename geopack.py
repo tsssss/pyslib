@@ -1,22 +1,8 @@
 import numpy as np
 import t89
-import pandas as pd
-import os.path
-import utils
-
-
-def load_igrf():
-    import pandas as pd
-
-    bfn = 'igrf12coeffs.txt'
-    locfn = os.path.join(utils.rootdir(), 'geopack', bfn)
-
-    # 4 lines of header.
-    nhead = 4
-    head = pd.read_fwf(locfn, skiprows=4, widths=[1, 3, 3])
-    coef = pd.read_fwf(locfn, skiprows=3, usecols=range(8, 1000))
-
-    print('haha')
+import t96
+import t01
+import t04
 
 
 def igrf_gsm(xgsm,ygsm,zgsm):
@@ -29,9 +15,6 @@ def igrf_gsm(xgsm,ygsm,zgsm):
     was changed, the model coefficients and GEO-GSM rotation matrix elements should be updated
     by calling the subroutine recalc
 
-    Last modification: May 4, 2005.
-    This version of the code accepts dates from 1965 through 2010.
-    Author: N. A. Tsyganenko
     Python version by Sheng Tian
 
     :param xgsm,ygsm,zgsm: cartesian GSM coordinates (in units Re=6371.2 km)
@@ -130,9 +113,6 @@ def igrf_geo(r,theta,phi):
     Before the first call of this subroutine, or if the date (iyear and iday) was changed,
     the model coefficients should be updated by calling the subroutine recalc
 
-    This version of the code accepts dates from 1965 through 2010.
-    Last modification: May 4, 2005.
-    Author: N. A. Tsyganenko
     Python version by Sheng Tian
 
     :param r: spherical geographic (geocentric) coordinates: radial distance r in units Re=6371.2 km
@@ -225,6 +205,7 @@ def igrf_geo(r,theta,phi):
     else: bf /= st
 
     return br,bt,bf
+
 
 def dip(xgsm,ygsm,zgsm):
     """
@@ -525,6 +506,7 @@ def recalc(iyear,iday,ihour,min,isec):
         for m in range(n+1):
             rec[nn] = (n-m)*(n+m)/n2    # (n-m)(n+m)/(2n+1)(2n-1)
             nn += 1
+
 
 
     if iy < 1970:       # interpolate between 1965 - 1970
