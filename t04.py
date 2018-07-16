@@ -1,81 +1,67 @@
 import numpy as np
 
-def t01(iopt, parmod, ps, x, y, z):
+# t04 is identical to t01 except for several factors.
+
+def t04(iopt,parmod,ps,x,y,z):
     """
-    Release date of this version: August 8, 2001.
-
-    Latest modifications/bugs removed: June 24, 2006:  replaced coefficients in:
-        (i)   data statement in function ap,
-        (ii)  data c_sy statement in subroutine full_rc, and
-        (iii) data a statement in subroutine t01_01.
-    This correction was needed because of a bug found in the symmetric ring current module.
-    Its impact is a minor (a few percent) change of the model field in the inner magnetosphere.
-
-    Attention: The model is based on data taken sunward from x=-15Re, and hence becomes
-    invalid at larger tailward distances !!!
-
-
     A data-based model of the external (i.e., without earth's contribution) part of the
     magnetospheric magnetic field, calibrated by
         (1) solar wind pressure pdyn (nanopascals),
         (2) dst (nanotesla),
         (3) byimf,
         (4) bzimf (nanotesla)
-        (5) g1-index
-        (6) g2-index  (see Tsyganenko [2001] for an exact definition of these two indices)
-
-    (C) Copr. 2001, Nikolai A. Tsyganenko, USRA, Code 690.2, NASA GSFC Greenbelt, MD 20771, USA
-
-    REFERENCE:
-    N. A. Tsyganenko, A new data-based model of the near magnetosphere magnetic field:
-        1. Mathematical structure. 2. Parameterization and fitting to observations. (submitted to JGR, July 2001)
+        (5-10) indices w1 - w6, calculated as time integrals from the beginning of a storm
+            see the reference (3) below, for a detailed definition of those variables
 
     :param iopt: A dummy input parameter, necessary to make this subroutine compatible with
         the tracing software package (geopack). In this model it does not affect the output field.
-    :param parmod: The elements are
-        (1) solar wind pressure pdyn (nanopascals)
-        (2) dst (nanotesla)
-        (3) byimf
-        (4) bzimf (nanotesla)
-        (5) g1-index
-        (6) g2-index  (see Tsyganenko [2001] for an exact definition of these two indices)
-        (7) the geodipole tilt angle ps (radians)
-        (8-10) x,y,z -  GSM position (Re)
-    :param ps: geo-dipole tilt angle in radius.
+    :param parmod: The elements are explained above.
     :param x,y,z: GSM coordinates in Re (1 Re = 6371.2 km)
     :return: bx,by,bz. Field components in GSM system, in nT.
         Computed as a sum of contributions from principal field sources.
+
+    Assembled: March 25, 2004; Updated: August 2 & 31, December 27, 2004.
+    A bug eliminated March 14, 2005 (might cause compilation problems with some fortran compilers)
+
+    Attention: The model is based on data taken sunward from x=-15Re, and hence becomes invalid at larger tailward distances !!!                                  *
+
+    REFERENCES:
+    (1) N. A. Tsyganenko, A new data-based model of the near magnetosphere magnetic field:
+        1. Mathematical structure.
+        2. Parameterization and fitting to observations.  JGR v. 107(A8), 1176/1179, doi:10.1029/2001JA000219/220, 2002.
+    (2) N. A. Tsyganenko, H. J. Singer, J. C. Kasper, Storm-time distortion of the
+        inner magnetosphere: How severe can it get ?  JGR v. 108(A5), 1209, doi:10.1029/2002JA009808, 2003.
+    (3) N. A. Tsyganenko and M. I. Sitnov, Modeling the dynamics of the inner magnetosphere during
+        strong geomagnetic storms, J. Geophys. Res., v. 110 (A3), A03208, doi: 10.1029/2004JA010798, 2005.
     """
+
 
     a = np.array([
-        1.00000,2.48341,.58315,.31917,-.08796,-1.17266,3.57478,
-        -.06143,-.01113,.70924,-.01675,-.46056,-.87754,-.03025,
-        .18933,.28089,.16636,-.02932,.02592,-.23537,-.07659,
-        .09117,-.02492,.06816,.55417,.68918,-.04604,2.33521,
-        3.90147,1.28978,.03139,.98751,.21824,41.60182,1.12761,
-        .01376,1.02751,.02969,.15790,8.94335,28.31280,1.24364,.38013])
+        1.00000,5.19884,0.923524,8.68111,0.00000,-6.44922,11.3109,
+        -3.84555,0.00000,0.558081,0.937044,0.00000,0.772433,0.687241,
+        0.00000,0.320369,1.22531,-0.432246E-01,-0.382436,0.457468,
+        0.741917,0.227194,0.154269,5.75196,22.3113,10.3526,64.3312,
+        1.01977,-0.200859E-01,0.971643,0.295525E-01,1.01032,0.215561,
+        1.50059,0.730898E-01,1.93625,1.74545,1.29533,0.714744,0.391687,
+        3.31283,75.0127,6.36283,4.43561,0.387801,0.699661,0.305352E-01,
+        0.581002,1.14671,0.876060,0.386060,0.801831,0.874315,0.463634,
+        0.175077,0.673053,0.388341,2.32074,1.32373,0.419800,1.24968,
+        1.28903,.409286,1.57622,.690036,1.28836,2.4054,.528557,.564247])
 
-    # The disclaimer below is temporarily disabled:
-    if x < -20:
-       print('Attention: the model is valid sunward from x=-15 re only, while you are trying to use it at x=', x)
-       raise ValueError
+    iopgen,ioptt,iopb,iopr = [0.]*4
 
-    pdyn = parmod[0]
-    dst_ast = parmod[1]*0.8-13.*np.sqrt(pdyn)
-    byimf,bzimf =parmod[2:4]
-    g1,g2 = parmod[4:6]
-    pss = ps
-    xx,yy,zz = [x,y,z]
+    pdyn=parmod[0]
+    dst_ast=parmod[1]*0.8-13*np.sqrt(pdyn)
+    bximf,byimf,bzimf=[0.,parmod[2],parmod[3]]
+    w1,w2,w3,w4,w5,w6 = parmod[4:10]
+    pss,xx,yy,zz = [ps,x,y,z]
 
-    bbx,bby,bbz = extall(0,0,0,0,a,43,pdyn,dst_ast,byimf,bzimf,g1,g2,pss,xx,yy,zz)
-
-    return bbx,bby,bbz
-
+    return extern(iopgen,ioptt,iopb,iopr,a,69,pdyn,dst_ast,bximf,byimf,bzimf,
+        w1,w2,w3,w4,w5,w6,pss,xx,yy,zz)
 
 
-def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x,y,z):
+def extern(iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,bximf,byimf,bzimf,w1,w2,w3,w4,w5,w6,ps,x,y,z):
     """
-
     :param iopgen: general option flag:
         iopgen=0 - calculate total field
         iopgen=1 - dipole shielding only
@@ -95,24 +81,11 @@ def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x
         iopr=0  -  both src and prc
         iopr=1  -  src only
         iopr=2  -  prc only
-    :param a:
-    :param ntot:
-    :param pdyn:
-    :param dst:
-    :param byimf:
-    :param bzimf:
-    :param vbimf1:
-    :param vbimf2:
-    :param ps:
-    :param x:
-    :param y:
-    :param z:
-    :return:
     """
 
     # common /tail/ dxshift1,dxshift2,d,deltady  ! the common blocks forward nonlinear parameters
     # common /birkpar/ xkappa1,xkappa2
-    # common /rcpar/ sc_sy,sc_pr,phi
+    # common /rcpar/ sc_sy,sc_as,phi
     # common /g/ g
     # common /rh0/ rh0
     global dxshift1, dxshift2, d, deltady
@@ -121,14 +94,13 @@ def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x
     global g
     global rh0
 
-
     a0_a,a0_s0,a0_x0 = [34.586,1.1960,3.4397]   # Shue et al. parameters
-    dsig = 0.003
+    dsig = 0.005
     rh0,rh2 = [8.0,-5.2]
 
-    xappa = (pdyn/2.)**a[38]    # now this is a variable parameter
-    rh0=a[39]
-    g=a[40]
+    xappa = (pdyn/2.)**a[22]    # overall scaling parameter
+    rh0 = 7.5                   # tail hinging distance
+    g = 35.0                    # tail warping parameter
 
     xappa3=xappa**3
 
@@ -142,25 +114,9 @@ def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x
     am=a0_a/xappa
     s0=a0_s0
 
-    bperp=np.sqrt(byimf**2+bzimf**2)
-
-    # calculate the imf clock angle:
-    if (byimf == 0) & (bzimf == 0):
-        theta = 0.
-    else:
-        theta=np.arctan2(byimf,bzimf)
-        if theta <= 0: theta = 2*np.pi
-
-    ct=np.cos(theta)
-    st=np.sin(theta)
-    ys=y*ct-z*st
-    zs=z*ct+y*st
-
-    sthetah=np.sin(theta/2.)**2
-
     # Calculate "imf" components outside the magnetopause layer (hence begin with "o")
     # They are needed only if the point (x,y,z) is within the transition magnetopause layer or outside the magnetosphere:
-    factimf=a[23]+a[24]*sthetah
+    factimf=a[19]
 
     oimfx=0.
     oimfy=byimf*factimf
@@ -206,34 +162,38 @@ def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x
             bycf=cfy*xappa3
             bzcf=cfz*xappa3
 
-        bxt1,byt1,tzt1,bxt2,byt2,bzt2 = [0.]*6
+        bxt1,byt1,bzt1,bxt2,byt2,bzt2 = [0.]*6
         if (iopgen == 0) | (iopgen == 2):
-            dxshift1=a[25]+a[26]*vbimf2
-            dxshift2=0.
-            d=a[27]
-            deltady=a[28]
-            # tail field (three modes)
+            dstt = -20.
+            if dst < dstt: dstt = dst
+            znam = np.abs(dstt)**0.37
+            dxshift1=a[23]-a[24]/znam
+            dxshift2=a[25]-a[26]/znam
+            d=a[35]*np.exp(-w1/a[36])+a[68]
+            deltady=4.7
             bxt1,byt1,bzt1,bxt2,byt2,bzt2 = deformed(iopt,ps,xx,yy,zz)
 
         bxr11,byr11,bzr11, bxr12,byr12,bzr12, bxr21,byr21,bzr21, bxr22,byr22,bzr22 = [0.]*12
         if (iopgen == 0) | (iopgen == 3):
-            xkappa1=a[34]+a[35]*vbimf2
-            xkappa2=a[36]+a[37]*vbimf2
+            znam = np.abs(dst)
+            if dst >= -20: znam = 20.
+            xkappa1=a[31]*(znam/20)**a[32]
+            xkappa2=a[33]*(znam/20)**a[34]
             # Birkeland field (two modes for r1 and two modes for r2)
             bxr11,byr11,bzr11, bxr12,byr12,bzr12, bxr21,byr21,bzr21, bxr22,byr22,bzr22 = \
                 birk_tot(iopb,ps,xx,yy,zz)
 
         bxsrc,bysrc,bzsrc, bxprc,byprc,bzprc = [0.]*6
         if (iopgen == 0) | (iopgen == 4):
-            phi=1.5707963*np.tanh(np.abs(dst)/a[33])
+            phi=a[37]
             znam=np.abs(dst)
-            if znam < 20: znam=20
-            sc_sy=a[29]*(20/znam)**a[30]*xappa
-            sc_pr=a[31]*(20/znam)**a[32]*xappa
+            if dst >= -20: znam = 20
+            sc_sy=a[27]*(20/znam)**a[28]*xappa
+            sc_pr=a[29]*(20/znam)**a[30]*xappa
             # shielded ring current (src and prc)
             bxsrc,bysrc,bzsrc, bxprc,byprc,bzprc = full_rc(iopr,ps,xx,yy,zz)
 
-        hximf,hyimf,hzimf = [0.,0,0]
+        hximf,hyimf,hzimf = [0.]*3
         if (iopgen == 0) | (iopgen == 5):
             # These are components of the penetrated field per unit of the penetration coefficient.
             # In other words, these are derivatives of the penetration field components with respect
@@ -242,29 +202,19 @@ def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x
             hximf,hyimf,hzimf = [0.,byimf,bzimf]
 
         # Now, add up all the components:
-        dlp1=(pdyn/2)**a[41]
-        dlp2=(pdyn/2)**a[42]
+        dlp1=(pdyn/2)**a[20]
+        dlp2=(pdyn/2)**a[21]
 
-        tamp1=a[1]+a[2]*dlp1+a[3]*vbimf1+a[4]*dst
-        tamp2=a[5]+a[6]*dlp2+a[7]*vbimf1+a[8]*dst
-        a_src=a[9] +a[10]*dst+a[11]*np.sqrt(pdyn)
-        a_prc=a[12]+a[13]*dst+a[14]*np.sqrt(pdyn)
-        a_r11=a[15]+a[16]*vbimf2
-        a_r12=a[17]+a[18]*vbimf2
-        a_r21=a[19]+a[20]*vbimf2
-        a_r22=a[21]+a[22]*vbimf2
+        tamp1=a[1]+a[2]*dlp1+a[3]*a[38]*w1/np.sqrt(w1**2+a[38]**2)+a[4]*dst
+        tamp2=a[5]+a[6]*dlp2+a[7]*a[39]*w2/np.sqrt(w2**2+a[39]**2)+a[8]*dst
+        a_src=a[9] +a[10]*a[40]*w3/np.sqrt(w3**2+a[40]**2)+a[11]*dst
+        a_prc=a[12]+a[13]*a[41]*w4/np.sqrt(w4**2+a[41]**2)+a[14]*dst
+        a_r11=a[15]+a[16]*a[42]*w5/np.sqrt(w5**2+a[42]**2)
+        a_r21=a[17]+a[18]*a[43]*w6/np.sqrt(w6**2+a[43]**2)
 
-        bbx=a[0]*bxcf+tamp1*bxt1+tamp2*bxt2+a_src*bxsrc+a_prc*bxprc \
-            +a_r11*bxr11+a_r12*bxr12+a_r21*bxr21+a_r22*bxr22 \
-            +a[23]*hximf+a[24]*hximf*sthetah
-
-        bby=a[0]*bycf+tamp1*byt1+tamp2*byt2+a_src*bysrc+a_prc*byprc \
-            +a_r11*byr11+a_r12*byr12+a_r21*byr21+a_r22*byr22 \
-            +a[23]*hyimf+a[24]*hyimf*sthetah
-
-        bbz=a[0]*bzcf+tamp1*bzt1+tamp2*bzt2+a_src*bzsrc+a_prc*bzprc \
-            +a_r11*bzr11+a_r12*bzr12+a_r21*bzr21+a_r22*bzr22 \
-            +a[23]*hzimf+a[24]*hzimf*sthetah
+        bbx=a[0]*bxcf + tamp1*bxt1+tamp2*bxt2 + a_src*bxsrc+a_prc*bxprc + a_r11*bxr11+a_r21*bxr21 + a[19]*hximf
+        bby=a[0]*bycf + tamp1*byt1+tamp2*byt2 + a_src*bysrc+a_prc*byprc + a_r11*byr11+a_r21*byr21 + a[19]*hyimf
+        bbz=a[0]*bzcf + tamp1*bzt1+tamp2*bzt2 + a_src*bzsrc+a_prc*bzprc + a_r11*bzr11+a_r21*bzr21 + a[19]*hzimf
 
         # And we have the total external field.
         #  Now, let us check whether we have the case (1). if yes - we are done:
@@ -287,9 +237,7 @@ def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x
 
     return bx,by,bz
 
-
-
-def shlcar3x3(x,y,z,ps):
+def shlcar3x3(x,y,z, ps):
     """
     This subroutine returns the shielding field for the earth's dipole, represented by
     2x3x3=18 "cartesian" harmonics, tilted with respect to the z=0 plane  (nb#4, p.74)
@@ -585,8 +533,7 @@ def shlcar3x3(x,y,z,ps):
 
     return bx, by, bz
 
-
-def deformed(iopt,ps,x,y,z):
+def deformed(iopt, ps, x,y,z):
     """
     Calculates gsm components of two unit-amplitude tail field modes, taking into account
         both effects of dipole tilt: warping in y-z (done by the subroutine warped) and bending
@@ -649,8 +596,7 @@ def deformed(iopt,ps,x,y,z):
 
     return bx1,by1,bz1, bx2,by2,bz2
 
-
-def warped(iopt,ps, x,y,z):
+def warped(iopt, ps, x,y,z):
     """
     Calculates GSM components of the warped field for two tail unit modes. The warping deformation
     is imposed on the unwarped field, computed by the subroutine "unwarped". The warping parameter
@@ -710,8 +656,6 @@ def warped(iopt,ps, x,y,z):
     bz2    = brho_s*sphi+bphi_s*cphi    # done
 
     return bx1,by1,bz1, bx2,by2,bz2
-
-
 
 def unwarped(iopt, x,y,z):
     """
@@ -787,51 +731,6 @@ def unwarped(iopt, x,y,z):
 
     return bx1,by1,bz1, bx2,by2,bz2
 
-
-
-def shlcar5x5(a,x,y,z,dshift):
-    """
-    This code returns the shielding field represented by  5x5=25 "cartesian" harmonics
-    
-    :param a: 
-    :param x,y,z: GSM coordinates in Re (1 Re = 6371.2 km)
-    :param dshift: 
-    :return:
-    """
-
-    # The nlin coefficients are the amplitudes of the "cartesian" harmonics (a(1)-a(nlin).
-    # The nnp nonlinear parameters (a(nlin+1)-a(ntot) are the scales pi and ri entering the arguments of exponents, sines,
-    # and cosines in each of the nlin "cartesian" harmonics
-
-    dhx,dhy,dhz = [0.]*3
-
-    l=0
-    for i in range(5):
-        rp=1/a[50+i]
-        cypi=np.cos(y*rp)
-        sypi=np.sin(y*rp)
-
-        for k in range(5):
-            rr=1/a[55+k]
-            szrk=np.sin(z*rr)
-            czrk=np.cos(z*rr)
-            sqpr=np.sqrt(rp**2+rr**2)
-            epr= np.exp(x*sqpr)
-
-            dbx=-sqpr*epr*cypi*szrk
-            dby= rp*epr*sypi*szrk
-            dbz=-rr*epr*cypi*czrk
-
-            coef=a[l]+a[l+1]*dshift
-            l += 2
-
-            dhx=dhx+coef*dbx
-            dhy=dhy+coef*dby
-            dhz=dhz+coef*dbz
-
-    return dhx,dhy,dhz
-
-
 def taildisk(d0,deltadx,deltady, x,y,z):
     """
     This subroutine computes the components of the tail current field, similar to that described by
@@ -905,11 +804,50 @@ def taildisk(d0,deltadx,deltady, x,y,z):
 
     return dbx, dby, dbz
 
-
-
-def birk_tot(iopb,ps,x,y,z):
+def shlcar5x5(a,x,y,z,dshift):
     """
-    
+    This code returns the shielding field represented by  5x5=25 "cartesian" harmonics
+
+    :param a:
+    :param x,y,z: GSM coordinates in Re (1 Re = 6371.2 km)
+    :param dshift:
+    :return:
+    """
+
+    # The nlin coefficients are the amplitudes of the "cartesian" harmonics (a(1)-a(nlin).
+    # The nnp nonlinear parameters (a(nlin+1)-a(ntot) are the scales pi and ri entering the arguments of exponents, sines,
+    # and cosines in each of the nlin "cartesian" harmonics
+
+    dhx,dhy,dhz = [0.]*3
+
+    l=0
+    for i in range(5):
+        rp=1/a[50+i]
+        cypi=np.cos(y*rp)
+        sypi=np.sin(y*rp)
+
+        for k in range(5):
+            rr=1/a[55+k]
+            szrk=np.sin(z*rr)
+            czrk=np.cos(z*rr)
+            sqpr=np.sqrt(rp**2+rr**2)
+            epr= np.exp(x*sqpr)
+
+            dbx=-sqpr*epr*cypi*szrk
+            dby= rp*epr*sypi*szrk
+            dbz=-rr*epr*cypi*czrk
+
+            coef=a[l]+a[l+1]*dshift
+            l += 2
+            dhx=dhx+coef*dbx
+            dhy=dhy+coef*dby
+            dhz=dhz+coef*dbz
+
+    return dhx,dhy,dhz
+
+def birk_tot(iopb, ps, x,y,z):
+    """
+
     :param iopb: birkeland field mode flag:
         iopb=0 - all components; iopb=1 - region 1, modes 1 & 2; iopb=2 - region 2, modes 1 & 2
     :param ps: geo-dipole tilt angle in radius.
@@ -1035,8 +973,6 @@ def birk_tot(iopb,ps,x,y,z):
 
     return bx11,by11,bz11, bx12,by12,bz12, bx21,by21,bz21, bx22,by22,bz22
 
-
-
 def birk_1n2(numb,mode,ps,x,y,z):        # NB# 6, p.60
     """
     Calculates components of region 1/2 field in spherical coords. Derived from the s/r dipdef2c
@@ -1129,7 +1065,7 @@ def birk_1n2(numb,mode,ps,x,y,z):        # NB# 6, p.60
     phis=phi-brack*np.sin(phi) -psias
     dphisphi=1-brack*np.cos(phi)
     dphisrho=-2*b*rho2*rho/(rho2+rho**2)**2*np.sin(phi) \
-        +beta*ps*r1rh**(eps-1)*rho/(rh*rsc*(1+r1rh**eps)**(1/eps+1))
+             +beta*ps*r1rh**(eps-1)*rho/(rh*rsc*(1+r1rh**eps)**(1/eps+1))
     dphisdy= beta*ps*r1rh**(eps-1)*ysc/(rh*rsc*(1+r1rh**eps)**(1/eps+1))
 
     sphics=np.sin(phis)
@@ -1245,14 +1181,14 @@ def r_s(a,r,theta):
 
     # dimension a(31)
     return r+a[1]/r+a[2]*r/np.sqrt(r**2+a[10]**2)+a[3]*r/(r**2+a[11]**2) \
-        +(a[4]+a[5]/r+a[6]*r/np.sqrt(r**2+a[12]**2)+a[7]*r/(r**2+a[13]**2))*np.cos(theta) \
-        +(a[8]*r/np.sqrt(r**2+a[14]**2)+a[9]*r/(r**2+a[15]**2)**2)*np.cos(2*theta)
+           +(a[4]+a[5]/r+a[6]*r/np.sqrt(r**2+a[12]**2)+a[7]*r/(r**2+a[13]**2))*np.cos(theta) \
+           +(a[8]*r/np.sqrt(r**2+a[14]**2)+a[9]*r/(r**2+a[15]**2)**2)*np.cos(2*theta)
 
 def theta_s(a,r,theta):
     # dimension a(31)
     return theta+(a[16]+a[17]/r+a[18]/r**2+a[19]*r/np.sqrt(r**2+a[26]**2))*np.sin(theta) \
-        +(a[20]+a[21]*r/np.sqrt(r**2+a[27]**2)+a[22]*r/(r**2+a[28]**2))*np.sin(2*theta) \
-        +(a[23]+a[24]/r+a[25]*r/(r**2+a[29]**2))*np.sin(3*theta)
+           +(a[20]+a[21]*r/np.sqrt(r**2+a[27]**2)+a[22]*r/(r**2+a[28]**2))*np.sin(2*theta) \
+           +(a[23]+a[24]/r+a[25]*r/(r**2+a[29]**2))*np.sin(3*theta)
 
 
 def fialcos(r,theta,phi,n,theta0,dt):
@@ -1653,7 +1589,7 @@ def ap(r,sint,cost):
         .09125832351,6.243029867,1.750145910,.4181957162,.06106691992,
         2.079908581,.6828548533]
 
-# indicates whether we are too close to the axis of symmetry, where the inversion of dipolar coordinates becomes inaccurate
+    # indicates whether we are too close to the axis of symmetry, where the inversion of dipolar coordinates becomes inaccurate
     prox = False
     sint1=sint
     cost1=cost
@@ -1712,10 +1648,10 @@ def ap(r,sint,cost):
 
     xk2s = 1-xk2
     dl = np.log(1/xk2s)
-    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212)))\
-        + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
-    ele = 1+xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451)))\
-        + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
+    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212))) \
+          + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
+    ele = 1+xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451))) \
+          + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
     aphi1=((1-xk2*0.5)*elk-ele)/xkrho12
 
 
@@ -1726,10 +1662,10 @@ def ap(r,sint,cost):
 
     xk2s = 1-xk2
     dl = np.log(1/xk2s)
-    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212)))\
-        + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
-    ele = 1+xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451)))\
-        + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
+    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212))) \
+          + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
+    ele = 1+xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451))) \
+          + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
     aphi2=((1-xk2*0.5)*elk-ele)/xkrho12
 
     ap=a1*aphi1+a2*aphi2
@@ -1794,7 +1730,7 @@ def apprc(r,sint,cost):
     :return:
     """
 
-    a1,a2,rrc1,dd1,rrc2,dd2,p1,alpha1,dal1,beta1,dg1,p2,alpha2,dal2,beta2,dg2,beta3,p3,\
+    a1,a2,rrc1,dd1,rrc2,dd2,p1,alpha1,dal1,beta1,dg1,p2,alpha2,dal2,beta2,dg2,beta3,p3, \
     alpha3,dal3,beta4,dg3,beta5,q0,q1,alpha4,dal4,dg4,q2,alpha5,dal5,dg5,beta6,beta7 = [
         -80.11202281,12.58246758,6.560486035,1.930711037,3.827208119,
         .7789990504,.3058309043,.1817139853,.1257532909,3.422509402,
@@ -1831,11 +1767,11 @@ def apprc(r,sint,cost):
 
     # alpha -> alpha_s  (deformed)
     alpha_s = alpha*(1 + p1/(1+((alpha-alpha1)/dal1)**2)**beta1*dexp1
-        + p2*(alpha-alpha2)/(1+((alpha-alpha2)/dal2)**2)**beta2/(1+(gamma/dg2)**2)**beta3
-        + p3*(alpha-alpha3)**2/(1.+((alpha-alpha3)/dal3)**2)**beta4/(1+(gamma/dg3)**2)**beta5)
+                     + p2*(alpha-alpha2)/(1+((alpha-alpha2)/dal2)**2)**beta2/(1+(gamma/dg2)**2)**beta3
+                     + p3*(alpha-alpha3)**2/(1.+((alpha-alpha3)/dal3)**2)**beta4/(1+(gamma/dg3)**2)**beta5)
     # gamma -> gamma_s  (deformed)
     gamma_s = gamma*(1 + q0 + q1*(alpha-alpha4)*dexp2
-        + q2*(alpha-alpha5)/(1+((alpha-alpha5)/dal5)**2)**beta6/(1+(gamma/dg5)**2)**beta7)
+                     + q2*(alpha-alpha5)/(1+((alpha-alpha5)/dal5)**2)**beta6/(1+(gamma/dg5)**2)**beta7)
 
     gammas2 = gamma_s**2
 
@@ -1862,10 +1798,10 @@ def apprc(r,sint,cost):
 
     xk2s = 1-xk2
     dl = np.log(1/xk2s)
-    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212)))\
-        + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
-    ele = 1 + xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451)))\
-        + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
+    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212))) \
+          + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
+    ele = 1 + xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451))) \
+          + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
     aphi1=((1-xk2*0.5)*elk-ele)/xkrho12
 
 
@@ -1876,10 +1812,10 @@ def apprc(r,sint,cost):
 
     xk2s = 1-xk2
     dl = np.log(1/xk2s)
-    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212)))\
-        + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
-    ele = 1 + xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451)))\
-        + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
+    elk = 1.38629436112 + xk2s*(0.09666344259+xk2s*(0.03590092383+xk2s*(0.03742563713+xk2s*0.01451196212))) \
+          + dl*(0.5+xk2s*(0.12498593597+xk2s*(0.06880248576+xk2s*(0.03328355346+xk2s*0.00441787012))))
+    ele = 1 + xk2s*(0.44325141463+xk2s*(0.0626060122+xk2s*(0.04757383546+xk2s*0.01736506451))) \
+          + dl*xk2s*(0.2499836831+xk2s*(0.09200180037+xk2s*(0.04069697526+xk2s*0.00526449639)))
     aphi2=((1-xk2*0.5)*elk-ele)/xkrho12
 
     apprc=a1*aphi1+a2*aphi2
@@ -2044,7 +1980,7 @@ def br_prc_q(r,sint,cost):
     f,fa,fs = ffs(alpha,al6,dal6)
     d18=sc*fs/(1.+((r-1.2)/drm)**2)
 
-    br_prc_q=a1*d1+a2*d2+a3*d3+a4*d4+a5*d5+a6*d6+a7*d7+a8*d8+a9*d9+\
+    br_prc_q=a1*d1+a2*d2+a3*d3+a4*d4+a5*d5+a6*d6+a7*d7+a8*d8+a9*d9+ \
              a10*d10+a11*d11+a12*d12+a13*d13+a14*d14+a15*d15+a16*d16+a17*d17+a18*d18
 
     return br_prc_q
@@ -2138,7 +2074,7 @@ def bt_prc_q(r,sint,cost):
     d16=cost2/(r**4+c2**2)
     d17=cost2**2/(r**4+c3**2)
 
-    bt_prc_q = a1*d1+a2*d2+a3*d3+a4*d4+a5*d5+a6*d6+a7*d7+a8*d8+a9*d9+\
+    bt_prc_q = a1*d1+a2*d2+a3*d3+a4*d4+a5*d5+a6*d6+a7*d7+a8*d8+a9*d9+ \
                a10*d10+a11*d11+a12*d12+a13*d13+a14*d14+a15*d15+a16*d16+a17*d17
 
     return bt_prc_q
@@ -2253,7 +2189,7 @@ def rc_shield(a,ps,x_sc,x,y,z):
     return bx, by, bz
 
 
-def dipole(ps, x, y, z):
+def dipole(ps, x,y,z):
     """
     Calculates GSM components of a geo-dipole field with the dipole moment corresponding to the epoch of 2000.
 
@@ -2262,17 +2198,16 @@ def dipole(ps, x, y, z):
     :return: bx,by,bz. Field components in GSM system, in nT.
     """
 
-    q0 = 30115. # nT.
-
     sps = np.sin(ps)
     cps = np.cos(ps)
-    x2 = x ** 2
-    y2 = y ** 2
-    z2 = z ** 2
-    xz3 = 3 * x * z
-    q = q0 / np.sqrt(x2 + y2 + z2) ** 5
-    bx = q * ((y2 + z2 - 2 * x2) * sps - xz3 * cps)
-    by = -3 * y * q * (x * sps + z * cps)
-    bz = q * ((x2 + y2 - 2 * z2) * cps - xz3 * sps)
 
-    return bx, by, bz
+    p = x**2
+    u = z**2
+    v = 3*z*x
+    t = y**2
+    q = 30115./np.sqrt(p+t+u)**5
+    bx = q*((t+u-2*p)*sps-v*cps)
+    by = -3*y*q*(x*sps+z*cps)
+    bz = q*((p+t-2*u)*cps-v*sps)
+
+    return bx,by,bz
