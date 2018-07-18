@@ -73,7 +73,7 @@ def t01(iopt, parmod, ps, x, y, z):
 
 
 
-def extall (iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x,y,z):
+def extall(iopgen,iopt,iopb,iopr,a,ntot,pdyn,dst,byimf,bzimf,vbimf1,vbimf2,ps,x,y,z):
     """
 
     :param iopgen: general option flag:
@@ -2276,3 +2276,10 @@ def dipole(ps, x, y, z):
     bz = q * ((x2 + y2 - 2 * z2) * cps - xz3 * sps)
 
     return bx, by, bz
+
+
+x,y,z,ps = [-5.1,0.3,2.8, -0.533585131]
+iopt = 2
+par = [2,-87,2,-5, 0,0, ps,x,y,z]
+bx,by,bz = t01(iopt, par, ps, x,y,z)
+print(bx,by,bz)

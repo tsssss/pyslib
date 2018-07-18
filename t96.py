@@ -88,9 +88,9 @@ def t96(iopt,parmod,ps,x,y,z):
         rimfy=rimfys*ct+rimfzs*st
         rimfz=rimfzs*ct-rimfys*st
 
-        fx=cfx*xappa3 + rcampl*bxrc + tampl2*bxt2+tampl3*bxt3+b1ampl*r1x +b2ampl*r2x +rimfampl*rimfx
-        fy=cfy*xappa3 + rcampl*byrc + tampl2*byt2+tampl3*byt3+b1ampl*r1y +b2ampl*r2y +rimfampl*rimfy
-        fz=cfz*xappa3 + rcampl*bzrc + tampl2*bzt2+tampl3*bzt3+b1ampl*r1z +b2ampl*r2z +rimfampl*rimfz
+        fx=cfx*xappa3 + rcampl*bxrc+tampl2*bxt2+tampl3*bxt3+ b1ampl*r1x +b2ampl*r2x +rimfampl*rimfx
+        fy=cfy*xappa3 + rcampl*byrc+tampl2*byt2+tampl3*byt3+ b1ampl*r1y +b2ampl*r2y +rimfampl*rimfy
+        fz=cfz*xappa3 + rcampl*bzrc+tampl2*bzt2+tampl3*bzt3+ b1ampl*r1z +b2ampl*r2z +rimfampl*rimfz
 
         #  Now, let us check whether we have the case (1). if yes - we are done:
         if sigma < (s0-dsig):   # (x,y,z) is inside the magnetosphere

@@ -3,6 +3,86 @@ import t89
 import t96
 import t01
 import t04
+import os.path
+import utils
+import datatype
+
+def load_igrf(ut):
+
+    global igrf, nmn,nyear, mns, years, yruts
+
+    try:
+        # igrf is a dictionary with keys ['g','h], each refers to an array of [nmn,nyear].
+        # The 1st dimension depends on mns, which is in [nmn,2], containing the [m,n] pair
+        # The 2nd dimension depends on years and yruts, containing the years and their uts.
+        type(igrf) == dict
+    except:
+        print('Load IGRF coefficients:')
+
+        bfn = 'igrf12coeffs.txt'
+        locffn = os.path.join(utils.rootdir(), 'geopack', bfn)
+
+        nheader = 3
+        with open(locffn, 'r') as file:
+            for i in range(nheader):
+                next(file)
+            header = file.readline().rstrip()
+            cols = header.split()
+            # first 3 columns are g/h flag, n, m.
+            years = np.array([np.int32(j[0:4]) for j in cols[3:]])
+            nyear = len(years)
+            lines = file.read().splitlines()
+
+        cols = lines[-1].split()
+        k = np.int32(cols[1]) + 1
+        nmn = np.int32((k+1)*k*0.5)
+        igrf = np.zeros((nmn,nyear,2), dtype=float)
+        mns = np.empty((nmn,2),dtype=np.int32)
+        l = 0
+        for i in range(k):
+            for j in range(i + 1):
+                mns[l,:] = [i,j]
+                l += 1
+
+        for line in lines:
+            cols = line.split()
+            if cols[0] == 'g':
+                i = 0
+            else:
+                i = 1
+            n,m = np.int32(cols[1:3])
+            mn = np.int32(n*(n+1)*0.5+m)
+            igrf[mn,:,i] = [np.float(j) for j in cols[3:]]
+
+        # treat the last column
+        years[-1] += 5
+        igrf[:,-1,:] = igrf[:,-2,:] + igrf[:,-1,:]*5
+        yruts = np.empty(nyear, dtype=float)
+        for i in range(nyear):
+            yruts[i] = datatype.ut(str(years[i]),'%Y').ut()
+        # separate g/h
+        igrf = {'g':igrf[:,:,0],'h':igrf[:,:,1]}
+
+    # locate the two years of interest.
+    yrut = ut[0]
+    if yrut <= yruts[0]: yridx = 0
+    elif yrut >= yruts[-1]: yridx = -2
+    else:
+        yridx = np.argwhere(yruts <= yrut)[-1]
+
+    g0 = np.squeeze(igrf['g'][:,yridx])
+    h0 = np.squeeze(igrf['h'][:,yridx])
+    g1 = np.squeeze(igrf['g'][:,yridx+1])
+    h1 = np.squeeze(igrf['h'][:,yridx+1])
+
+    ut0 = yruts[yridx]
+    ut1 = yruts[yridx+1]
+    f1 = (ut[0]-ut0)/(ut1-ut0)
+    f0 = 1-f1
+
+    return g0*f0+g1*f1, h0*f0+h1*f1
+
+
 
 
 def igrf_gsm(xgsm,ygsm,zgsm):
@@ -21,88 +101,12 @@ def igrf_gsm(xgsm,ygsm,zgsm):
     :return: hxgsm,hygsm,hzgsm. Cartesian GSM components of the main geomagnetic field in nanotesla
     """
 
+    xgeo,ygeo,zgeo = geogsm(xgsm,ygsm,zgsm, -1)
+    r,theta,phi = sphcar(xgeo,ygeo,zgeo, -1)
+    br,btheta,bphi = igrf_geo(r,theta,phi)
+    bxgeo,bygeo,bzgeo = bspcar(theta,phi,br,btheta,bphi)
+    return geogsm(bxgeo,bygeo,bzgeo, 1)
 
-    # common /geopack2/ g(105),h(105),rec(105)
-    global g, h, rec
-
-    xgeo,ygeo,zgeo = geogsm(xgsm,ygsm,zgsm,-1)
-
-    rho2 = xgeo**2+ygeo**2
-    r = np.sqrt(rho2+zgeo**2)
-    c = zgeo/r
-    rho = np.sqrt(rho2)
-    s = rho/r
-    if s < 1e-5:
-        cf,sf = [1.,0]
-    else:
-        cf = xgeo/rho
-        sf = ygeo/rho
-
-    pp = 1./r
-    p = pp
-
-    # In this new version, the optimal value of the parameter nm (maximal order of the spherical
-    # harmonic expansion) is not user-prescribed, but calculated inside the subroutine, based
-    #  on the value of the radial distance r:
-    irp3 = np.int64(r+2)
-    nm = np.int64(3+30/irp3)
-    if nm > 13: nm = 13
-
-    k = nm+1
-    a = np.empty(14)
-    b = np.empty(14)
-    for n in range(k):
-        p = p*pp
-        a[n]=p
-        b[n]=p*(n+1)
-
-    p,d, bbr,bbt,bbf = [1.,0, 0,0,0]
-    for m in range(1,k+1):
-        if m == 1: x,y = [0.,1]
-        else:
-            mm=m-1
-            w=x
-            x=w*cf+y*sf
-            y=y*cf-w*sf
-        q,z,bi,p2,d2 = [p,d,0.,0,0]
-        for n in range(m,k+1):
-            an=a[n-1]
-            mn=np.int64(n*(n-1)/2+m)
-            e=g[mn-1]
-            hh=h[mn-1]
-            w=e*y+hh*x
-            bbr=bbr+b[n-1]*w*q
-            bbt=bbt-an*w*z
-            if m != 1:
-                qq=q
-                if s < 1.e-5: qq=z
-                bi=bi+an*(e*x-hh*y)*qq
-            xk=rec[mn-1]
-            dp=c*z-s*q-xk*d2
-            pm=c*q-xk*p2
-            d2,p2,z = [z,q,dp]
-            q=pm
-
-        d=s*d+c*p
-        p=s*p
-        if m == 1: continue
-        else:
-            bi=bi*mm
-            bbf=bbf+bi
-
-    br=bbr
-    bt=bbt
-    if s < 1.e-5:
-        if c< 0.: bbf=-bbf
-        bf=bbf
-    else: bf = bbf/s
-
-    he=br*s+bt*c
-    hxgeo=he*cf-bf*sf
-    hygeo=he*sf+bf*cf
-    hzgeo=br*c-bt*s
-
-    return geogsm(hxgeo,hygeo,hzgeo,1)
 
 def igrf_geo(r,theta,phi):
     """
@@ -140,6 +144,7 @@ def igrf_geo(r,theta,phi):
     if nm > 13: nm = 13
     k = nm+1
 
+    # r dependence is encapsulated here.
     a = np.empty(k)
     b = np.empty(k)
     ar = 1/r        # a/r
@@ -150,10 +155,11 @@ def igrf_geo(r,theta,phi):
         b[n] = a[n]*(n+1)
 
 
+    # t - short for theta, f - short for phi.
     br,bt,bf = [0.]*3
     d,p = [0.,1]
 
-    # m = 0. P_n,0
+    # m = 0. P^n,0
     m = 0
     smf,cmf = [0.,1]
     p1,d1,p2,d2 = [p,d,0.,0]
@@ -161,18 +167,21 @@ def igrf_geo(r,theta,phi):
     mn = l0
     for n in range(m,k):
         w = g[mn]*cmf+h[mn]*smf
-        br += b[n]*w*p1          # p1 is P_m,n.
-        bt -= a[n]*w*d1          # d1 is dP_m,n/dt.
+        br += b[n]*w*p1          # p1 is P^n,m.
+        bt -= a[n]*w*d1          # d1 is dP^n,m/dt.
         xk = rec[mn]
-        d0 = ct*d1-st*p1-xk*d2   # dP_m,n/dt = ct*(2n-1)/(n-m)*dP_m,n-1/dt - st*(2n-1)/(n-m)*P_m,n-1 - (n+m-1)/(n-m)*dP_m,n-2/dt
-        p0 = ct*p1-xk*p2         # P_m,n = ct*(2n-1)/(n-m)*P_m,n-1 - (n+m-1)/(n-m)*P_m,n-2
+        # Eq 16c and its derivative on theta.
+        d0 = ct*d1-st*p1-xk*d2   # dP^n,m/dt = ct*dP^n-1,m/dt - st*P_n-1,m - K^n,m*dP^n-2,m/dt
+        p0 = ct*p1-xk*p2         # P^n,m = ct*P^n-1,m - K^n,m*P^n-2,m
         d2,p2,d1 = [d1,p1,d0]
         p1 = p0
         mn += n+1
-    d = st*d+ct*p   # dP_m,m/dt
-    p = st*p        # P_m,m
 
-    # P_mn
+    # Eq 16b and its derivative on theta.
+    d = st*d+ct*p   # dP^m,m/dt = st*dP^m-1,m-1/dt + ct*P^m-1,m-1
+    p = st*p        # P^m,m = st*P^m-1,m-1
+
+    # Similarly for P^n,m
     l0 = 0
     for m in range(1,k):        # sum over m
         smf = np.sin(m*phi)     # sin(m*phi)
@@ -182,21 +191,23 @@ def igrf_geo(r,theta,phi):
         l0 += m+1
         mn = l0
         for n in range(m,k):    # sum over n
-            w=g[mn]*cmf+h[mn]*smf   # [g_mn*cos(m*phi)+h_mn*sin(m*phi)]
+            w=g[mn]*cmf+h[mn]*smf   # [g^n,m*cos(m*phi)+h^n,m*sin(m*phi)]
             br += b[n]*w*p1
             bt -= a[n]*w*d1
             tp = p1
             if smlst: tp = d1
             tbf += a[n]*(g[mn]*smf-h[mn]*cmf)*tp
             xk = rec[mn]
-            d0 = ct*d1-st*p1-xk*d2  # dP_m,n/dt = ct*(2n-1)/(n-m)*dP_m,n-1/dt - st*(2n-1)/(n-m)*P_m,n-1 - (n+m-1)/(n-m)*dP_m,n-2/dt
-            p0 = ct*p1-xk*p2        # P_m,n = ct*(2n-1)/(n-m)*P_m,n-1 - (n+m-1)/(n-m)*P_m,n-2
+            d0 = ct*d1-st*p1-xk*d2   # dP^n,m/dt = ct*dP^n-1,m/dt - st*P_n-1,m - K^n,m*dP^n-2,m/dt
+            p0 = ct*p1-xk*p2         # P^n,m = ct*P^n-1,m - K^n,m*P^n-2,m
             d2,p2,d1 = [d1,p1,d0]
             p1=p0
             mn += n+1
 
-        d = st*d+ct*p    # dP_m,m/dt
-        p = st*p         # P_m,m
+        d = st*d+ct*p
+        p = st*p
+
+        # update B_phi.
         tbf *= m
         bf += tbf
 
@@ -225,10 +236,11 @@ def dip(xgsm,ygsm,zgsm):
     global aaa, sps,cps, bbb, g, h, rec
 
     dipmom = np.sqrt(g[1]**2+g[2]**2+h[2]**2)
+    print(dipmom)
 
     p = xgsm**2
     u = zgsm**2
-    v = 3.*zgsm*xgsm
+    v = 3*zgsm*xgsm
     t = ygsm**2
     q = dipmom/np.sqrt(p+t+u)**5
 
@@ -240,7 +252,7 @@ def dip(xgsm,ygsm,zgsm):
 
 
 
-def recalc(iyear,iday,ihour,min,isec):
+def recalc(ut):
     """
     1. Prepares elements of rotation matrices for transformations of vectors between
         several coordinate systems, most frequently used in space physics.
@@ -250,32 +262,10 @@ def recalc(iyear,iday,ihour,min,isec):
         igrf_geo, igrf_gsm, dip, geomag, geogsm, magsm, smgsm, gsmgse, geigeo.
     There is no need to repeatedly invoke recalc, if multiple calculations are made for the same date and time.
 
-    :param iyear: year number (four digits)
-    :param iday: day of year (day 1 = Jan 1)
-    :param ihour: hour of day (00 to 23)
-    :param min: minute of hour (00 to 59)
-    :param isec: seconds of minute (00 to 59)
+    :param ut: ut second.
     :return: none (all output quantities are placed into the common blocks /geopack1/ and /geopack2/)
 
-
-    Author:  N.A. Tsyganenko
-    Date:    Dec.1, 1991
     Python version by Sheng Tian
-
-    Correction of May 9, 2006:  interpolation of the coefficients (between
-        labels 50 and 105) is now made through the last element of the arrays
-        g(105) and h(105) (previously made only through n=66, which in some
-        cases caused runtime errors)
-
-    Revision of May 3, 2005:
-        The table of IGRF coefficients was extended to include those for the epoch 2005
-        the maximal order of spherical harmonics was also increased up to 13
-        (for details, see http://www.ngdc.noaa.gov/iaga/vmod/igrf.html)
-
-    Revision of April 3, 2003:
-        The code now includes preparation of the model coefficients for the subroutines
-        IGRF and geomag. this eliminates the need for the save statements, used in the
-        old versions, making the codes easier and more compiler-independent.
     """
 
 
@@ -303,286 +293,46 @@ def recalc(iyear,iday,ihour,min,isec):
     # common /geopack2/ g(105),h(105),rec(105)
     global g,h,rec
 
-    # TODO: use the igrf coeff directly.
-    g65 = np.array([0.,-30334.,-2119.,-1662.,2997.,1594.,1297.,-2038.,1292.,
-        856.,957.,804.,479.,-390.,252.,-219.,358.,254.,-31.,-157.,-62.,
-        45.,61.,8.,-228.,4.,1.,-111.,75.,-57.,4.,13.,-26.,-6.,13.,1.,13.,
-        5.,-4.,-14.,0.,8.,-1.,11.,4.,8.,10.,2.,-13.,10.,-1.,-1.,5.,1.,-2.,
-        -2.,-3.,2.,-5.,-2.,4.,4.,0.,2.,2.,0.]+39*[0.])
-    h65 = np.array([0.,0.,5776.,0.,-2016.,114.,0.,-404.,240.,-165.,0.,148.,
-        -269.,13.,-269.,0.,19.,128.,-126.,-97.,81.,0.,-11.,100.,68.,-32.,
-        -8.,-7.,0.,-61.,-27.,-2.,6.,26.,-23.,-12.,0.,7.,-12.,9.,-16.,4.,
-        24.,-3.,-17.,0.,-22.,15.,7.,-4.,-5.,10.,10.,-4.,1.,0.,2.,1.,2.,
-        6.,-4.,0.,-2.,3.,0.,-6.]+39*[0.])
-    g70 = np.array([0.,-30220.,-2068.,-1781.,3000.,1611.,1287.,-2091.,1278.,
-        838.,952.,800.,461.,-395.,234.,-216.,359.,262.,-42.,-160.,-56.,
-        43.,64.,15.,-212.,2.,3.,-112.,72.,-57.,1.,14.,-22.,-2.,13.,-2.,
-        14.,6.,-2.,-13.,-3.,5.,0.,11.,3.,8.,10.,2.,-12.,10.,-1.,0.,3.,
-        1.,-1.,-3.,-3.,2.,-5.,-1.,6.,4.,1.,0.,3.,-1.]+39*[0.])
-    h70 = np.array([0.,0.,5737.,0.,-2047.,25.,0.,-366.,251.,-196.,0.,167.,
-        -266.,26.,-279.,0.,26.,139.,-139.,-91.,83.,0.,-12.,100.,72.,-37.,
-        -6.,1.,0.,-70.,-27.,-4.,8.,23.,-23.,-11.,0.,7.,-15.,6.,-17.,6.,
-        21.,-6.,-16.,0.,-21.,16.,6.,-4.,-5.,10.,11.,-2.,1.,0.,1.,1.,3.,
-        4.,-4.,0.,-1.,3.,1.,-4.]+39*[0.])
-    g75 = np.array([0.,-30100.,-2013.,-1902.,3010.,1632.,1276.,-2144.,1260.,
-        830.,946.,791.,438.,-405.,216.,-218.,356.,264.,-59.,-159.,-49.,
-        45.,66.,28.,-198.,1.,6.,-111.,71.,-56.,1.,16.,-14.,0.,12.,-5.,
-        14.,6.,-1.,-12.,-8.,4.,0.,10.,1.,7.,10.,2.,-12.,10.,-1.,-1.,4.,
-        1.,-2.,-3.,-3.,2.,-5.,-2.,5.,4.,1.,0.,3.,-1.]+39*[0.])
-    h75 = np.array([0.,0.,5675.,0.,-2067.,-68.,0.,-333.,262.,-223.,0.,191.,
-        -265.,39.,-288.,0.,31.,148.,-152.,-83.,88.,0.,-13.,99.,75.,-41.,
-        -4.,11.,0.,-77.,-26.,-5.,10.,22.,-23.,-12.,0.,6.,-16.,4.,-19.,6.,
-        18.,-10.,-17.,0.,-21.,16.,7.,-4.,-5.,10.,11.,-3.,1.,0.,1.,1.,3.,
-        4.,-4.,-1.,-1.,3.,1.,-5.]+39*[0.])
-    g80 = np.array([0.,-29992.,-1956.,-1997.,3027.,1663.,1281.,-2180.,1251.,
-        833.,938.,782.,398.,-419.,199.,-218.,357.,261.,-74.,-162.,-48.,
-        48.,66.,42.,-192.,4.,14.,-108.,72.,-59.,2.,21.,-12.,1.,11.,-2.,
-        18.,6.,0.,-11.,-7.,4.,3.,6.,-1.,5.,10.,1.,-12.,9.,-3.,-1.,7.,2.,
-        -5.,-4.,-4.,2.,-5.,-2.,5.,3.,1.,2.,3.,0.]+39*[0.])
-    h80 = np.array([0.,0.,5604.,0.,-2129.,-200.,0.,-336.,271.,-252.,0.,212.,
-        -257.,53.,-297.,0.,46.,150.,-151.,-78.,92.,0.,-15.,93.,71.,-43.,
-        -2.,17.,0.,-82.,-27.,-5.,16.,18.,-23.,-10.,0.,7.,-18.,4.,-22.,9.,
-        16.,-13.,-15.,0.,-21.,16.,9.,-5.,-6.,9.,10.,-6.,2.,0.,1.,0.,3.,
-        6.,-4.,0.,-1.,4.,0.,-6.]+39*[0.])
-    g85 = np.array([0.,-29873.,-1905.,-2072.,3044.,1687.,1296.,-2208.,1247.,
-        829.,936.,780.,361.,-424.,170.,-214.,355.,253.,-93.,-164.,-46.,
-        53.,65.,51.,-185.,4.,16.,-102.,74.,-62.,3.,24.,-6.,4.,10.,0.,21.,
-        6.,0.,-11.,-9.,4.,4.,4.,-4.,5.,10.,1.,-12.,9.,-3.,-1.,7.,1.,-5.,
-        -4.,-4.,3.,-5.,-2.,5.,3.,1.,2.,3.,0.]+39*[0.])
-    h85 = np.array([0.,0.,5500.,0.,-2197.,-306.,0.,-310.,284.,-297.,0.,232.,
-        -249.,69.,-297.,0.,47.,150.,-154.,-75.,95.,0.,-16.,88.,69.,-48.,
-        -1.,21.,0.,-83.,-27.,-2.,20.,17.,-23.,-7.,0.,8.,-19.,5.,-23.,11.,
-        14.,-15.,-11.,0.,-21.,15.,9.,-6.,-6.,9.,9.,-7.,2.,0.,1.,0.,3.,
-        6.,-4.,0.,-1.,4.,0.,-6.]+39*[0.])
-    g90 = np.array([
-              0., -29775.,  -1848.,  -2131.,   3059.,   1686.,   1314.,
-          -2239.,   1248.,    802.,    939.,    780.,    325.,   -423.,
-            141.,   -214.,    353.,    245.,   -109.,   -165.,    -36.,
-             61.,     65.,     59.,   -178.,      3.,     18.,    -96.,
-             77.,    -64.,      2.,     26.,     -1.,      5.,      9.,
-              0.,     23.,      5.,     -1.,    -10.,    -12.,      3.,
-              4.,      2.,     -6.,      4.,      9.,      1.,    -12.,
-              9.,     -4.,     -2.,      7.,      1.,     -6.,     -3.,
-             -4.,      2.,     -5.,     -2.,      4.,      3.,      1.,
-              3.,      3.,      0.]+  39*[0.])
-    h90 = np.array([
-             0.,      0.,   5406.,      0.,  -2279.,   -373.,      0.,
-          -284.,    293.,   -352.,      0.,    247.,   -240.,     84.,
-          -299.,      0.,     46.,    154.,   -153.,    -69.,     97.,
-             0.,    -16.,     82.,     69.,    -52.,      1.,     24.,
-             0.,    -80.,    -26.,      0.,     21.,     17.,    -23.,
-            -4.,      0.,     10.,    -19.,      6.,    -22.,     12.,
-            12.,    -16.,    -10.,      0.,    -20.,     15.,     11.,
-            -7.,     -7.,      9.,      8.,     -7.,      2.,      0.,
-             2.,      1.,      3.,      6.,     -4.,      0.,     -2.,
-             3.,     -1.,     -6.]+   39*[0.])
-    g95 = np.array([
-             0., -29692.,  -1784.,  -2200.,   3070.,   1681.,   1335.,
-         -2267.,   1249.,    759.,    940.,    780.,    290.,   -418.,
-           122.,   -214.,    352.,    235.,   -118.,   -166.,    -17.,
-            68.,     67.,     68.,   -170.,     -1.,     19.,    -93.,
-            77.,    -72.,      1.,     28.,      5.,      4.,      8.,
-            -2.,     25.,      6.,     -6.,     -9.,    -14.,      9.,
-             6.,     -5.,     -7.,      4.,      9.,      3.,    -10.,
-             8.,     -8.,     -1.,     10.,     -2.,     -8.,     -3.,
-            -6.,      2.,     -4.,     -1.,      4.,      2.,      2.,
-             5.,      1.,      0.]+    39*[0.])
-    h95 = np.array([
-             0.,      0.,   5306.,      0.,  -2366.,   -413.,      0.,
-          -262.,    302.,   -427.,      0.,    262.,   -236.,     97.,
-          -306.,      0.,     46.,    165.,   -143.,    -55.,    107.,
-             0.,    -17.,     72.,     67.,    -58.,      1.,     36.,
-             0.,    -69.,    -25.,      4.,     24.,     17.,    -24.,
-            -6.,      0.,     11.,    -21.,      8.,    -23.,     15.,
-            11.,    -16.,     -4.,      0.,    -20.,     15.,     12.,
-            -6.,     -8.,      8.,      5.,     -8.,      3.,      0.,
-             1.,      0.,      4.,      5.,     -5.,     -1.,     -2.,
-             1.,     -2.,     -7.]+    39*[0.])
-    g00 = np.array([
-             0.,-29619.4, -1728.2, -2267.7,  3068.4,  1670.9,  1339.6,
-         -2288.,  1252.1,   714.5,   932.3,   786.8,    250.,   -403.,
-          111.3,  -218.8,   351.4,   222.3,  -130.4,  -168.6,   -12.9,
-           72.3,    68.2,    74.2,  -160.9,    -5.9,    16.9,   -90.4,
-           79.0,   -74.0,      0.,    33.3,     9.1,     6.9,     7.3,
-           -1.2,    24.4,     6.6,    -9.2,    -7.9,   -16.6,     9.1,
-            7.0,    -7.9,     -7.,      5.,     9.4,      3.,   - 8.4,
-            6.3,    -8.9,    -1.5,     9.3,    -4.3,    -8.2,    -2.6,
-            -6.,     1.7,    -3.1,    -0.5,     3.7,      1.,      2.,
-            4.2,     0.3,    -1.1,     2.7,    -1.7,    -1.9,     1.5,
-           -0.1,     0.1,    -0.7,     0.7,     1.7,     0.1,     1.2,
-            4.0,    -2.2,    -0.3,     0.2,     0.9,    -0.2,     0.9,
-           -0.5,     0.3,    -0.3,    -0.4,    -0.1,    -0.2,    -0.4,
-           -0.2,    -0.9,     0.3,     0.1,    -0.4,     1.3,    -0.4,
-            0.7,    -0.4,     0.3,    -0.1,     0.4,      0.,     0.1])
-    h00 = np.array([
-             0.,      0.,  5186.1,      0., -2481.6,  -458.0,      0.,
-         -227.6,   293.4,  -491.1,      0.,   272.6,  -231.9,   119.8,
-         -303.8,      0.,    43.8,   171.9,  -133.1,   -39.3,   106.3,
-             0.,   -17.4,    63.7,    65.1,   -61.2,     0.7,    43.8,
-             0.,   -64.6,   -24.2,     6.2,     24.,    14.8,   -25.4,
-           -5.8,     0.0,    11.9,   -21.5,     8.5,   -21.5,    15.5,
-            8.9,   -14.9,    -2.1,     0.0,   -19.7,    13.4,    12.5,
-           -6.2,    -8.4,     8.4,     3.8,    -8.2,     4.8,     0.0,
-            1.7,     0.0,     4.0,     4.9,    -5.9,    -1.2,    -2.9,
-            0.2,    -2.2,    -7.4,     0.0,     0.1,     1.3,    -0.9,
-           -2.6,     0.9,    -0.7,    -2.8,    -0.9,    -1.2,    -1.9,
-           -0.9,     0.0,    -0.4,     0.3,     2.5,    -2.6,     0.7,
-            0.3,     0.0,     0.0,     0.3,    -0.9,    -0.4,     0.8,
-            0.0,    -0.9,     0.2,     1.8,    -0.4,    -1.0,    -0.1,
-            0.7,     0.3,     0.6,     0.3,    -0.2,    -0.5,    -0.9])
-    g05 = np.array([
-             0.,-29556.8, -1671.8, -2340.5,   3047.,  1656.9,  1335.7,
-        -2305.3,  1246.8,   674.4,   919.8,   798.2,   211.5,  -379.5,
-          100.2,  -227.6,   354.4,   208.8,  -136.6,  -168.3,   -14.1,
-           72.9,    69.6,    76.6,  -151.1,   -15.0,    14.7,   -86.4,
-           79.8,   -74.4,    -1.4,    38.6,    12.3,     9.4,     5.5,
-            2.0,    24.8,     7.7,   -11.4,    -6.8,   -18.0,    10.0,
-            9.4,   -11.4,    -5.0,     5.6,     9.8,     3.6,    -7.0,
-            5.0,   -10.8,    -1.3,     8.7,    -6.7,    -9.2,    -2.2,
-           -6.3,     1.6,    -2.5,    -0.1,     3.0,     0.3,     2.1,
-            3.9,    -0.1,    -2.2,     2.9,    -1.6,    -1.7,     1.5,
-           -0.2,     0.2,    -0.7,     0.5,     1.8,     0.1,     1.0,
-            4.1,    -2.2,    -0.3,     0.3,     0.9,    -0.4,     1.0,
-           -0.4,     0.5,    -0.3,    -0.4,     0.0,    -0.4,     0.0,
-           -0.2,    -0.9,     0.3,     0.3,    -0.4,     1.2,    -0.4,
-            0.7,    -0.3,     0.4,    -0.1,     0.4,    -0.1,    -0.3])
-    h05 = np.array([
-             0.,     0.0,  5080.0,     0.0, -2594.9,  -516.7,     0.0,
-         -200.4,   269.3,  -524.5,     0.0,   281.4,  -225.8,   145.7,
-         -304.7,     0.0,    42.7,   179.8,  -123.0,   -19.5,   103.6,
-            0.0,   -20.2,    54.7,    63.7,   -63.4,     0.0,    50.3,
-            0.0,   -61.4,   -22.5,     6.9,    25.4,    10.9,   -26.4,
-           -4.8,     0.0,    11.2,   -21.0,     9.7,   -19.8,    16.1,
-            7.7,   -12.8,    -0.1,     0.0,   -20.1,    12.9,    12.7,
-           -6.7,    -8.1,     8.1,     2.9,    -7.9,     5.9,     0.0,
-            2.4,     0.2,     4.4,     4.7,    -6.5,    -1.0,    -3.4,
-           -0.9,    -2.3,    -8.0,     0.0,     0.3,     1.4,    -0.7,
-           -2.4,     0.9,    -0.6,    -2.7,    -1.0,    -1.5,    -2.0,
-           -1.4,     0.0,    -0.5,     0.3,     2.3,    -2.7,     0.6,
-            0.4,     0.0,     0.0,     0.3,    -0.8,    -0.4,     1.0,
-            0.0,    -0.7,     0.3,     1.7,    -0.5,    -1.0,     0.0,
-            0.7,     0.2,     0.6,     0.4,    -0.2,    -0.5,    -1.0])
-    dg05 = np.array([
-              0.0,   8.8,    10.8,   -15.0,    -6.9,    -1.0,    -0.3,
-             -3.1,  -0.9,    -6.8,    -2.5,     2.8,    -7.1,     5.9,
-             -3.2,  -2.6,     0.4,    -3.0,    -1.2,     0.2,    -0.6,
-             -0.8,   0.2,    -0.2,     2.1,    -2.1,    -0.4,     1.3,
-             -0.4,   0.0,    -0.2,     1.1,     0.6,     0.4,    -0.5,
-              0.9,  -0.2,     0.2,    -0.2,     0.2,    -0.2,     0.2,
-              0.5,  -0.7,     0.5])
 
-    dh05 = np.array([
-              0.0,   0.0,   -21.3,     0.0,   -23.3,   -14.0,     0.0,
-              5.4,  -6.5,    -2.0,     0.0,     2.0,     1.8,     5.6,
-              0.0,   0.0,     0.1,     1.8,     2.0,     4.5,    -1.0,
-              0.0,  -0.4,    -1.9,    -0.4,    -0.4,    -0.2,     0.9,
-              0.0,   0.8,     0.4,     0.1,     0.2,    -0.9,    -0.3,
-              0.3,   0.0,    -0.2,     0.2,     0.2,     0.4,     0.2,
-             -0.3,   0.5,     0.4])
-
-
-    # We are restricted by the interval 1965-2010, for which the IGRF coefficients
-    # are known; if iyear is outside this interval, then the subroutine uses the
-    # nearest limiting value and prints a warning:
-    iy=iyear
-
-    if iy < 1965: iy = 1965
-    if iy > 2010: iy = 2010
-
-
-    # Calculate the array rec, containing coefficients for the recursion relations,
-    # used in the IGRF subroutine for calculating the associate legendre polynomials
-    # and their derivatives:
-
-    rec = np.empty(105,dtype=float)
-    g   = np.empty(105,dtype=float)
-    h   = np.empty(105,dtype=float)
-
-    rec = np.empty(105,dtype=float)
-    nn = 0
-    for n in range(14):
-        n2 = 2*n+1
-        n2 = n2*(n2-2)      # (2n+1)(2n-1)
-        for m in range(n+1):
-            rec[nn] = (n-m)*(n+m)/n2    # (n-m)(n+m)/(2n+1)(2n-1)
-            nn += 1
-
-
-
-    if iy < 1970:       # interpolate between 1965 - 1970
-        f2=(iy+(iday-1)/365.25-1965)/5.
-        f1=1.-f2
-        for n in range(105):
-           g[n]=g65[n]*f1+g70[n]*f2
-           h[n]=h65[n]*f1+h70[n]*f2
-    elif iy < 1975:     # interpolate between 1970 - 1975
-        f2=(iy+(iday-1)/365.25-1970)/5.
-        f1=1.-f2
-        for n in range(105):
-            g[n]=g70[n]*f1+g75[n]*f2
-            h[n]=h70[n]*f1+h75[n]*f2
-    elif iy < 1980:     # interpolate between 1975 - 1980
-        f2=(iy+(iday-1)/365.25-1975)/5.
-        f1=1.-f2
-        for n in range(105):
-            g[n]=g75[n]*f1+g80[n]*f2
-            h[n]=h75[n]*f1+h80[n]*f2
-    elif iy < 1985:     # interpolate between 1980 - 1985
-        f2=(iy+(iday-1)/365.25-1980)/5.
-        f1=1.-f2
-        for n in range(105):
-            g[n]=g80[n]*f1+g85[n]*f2
-            h[n]=h80[n]*f1+h85[n]*f2
-    elif iy < 1990:     # interpolate between 1985 - 1990
-        f2=(iy+(iday-1)/365.25-1985)/5.
-        f1=1.-f2
-        for n in range(105):
-            g[n]=g85[n]*f1+g90[n]*f2
-            h[n]=h85[n]*f1+h90[n]*f2
-    elif iy < 1995:     # interpolate between 1990 - 1995
-        f2=(iy+(iday-1)/365.25-1990)/5.
-        f1=1.-f2
-        for n in range(105):
-            g[n]=g90[n]*f1+g95[n]*f2
-            h[n]=h90[n]*f1+h95[n]*f2
-    elif iy < 2000:     # interpolate between 1995 - 2000
-        f2=(iy+(iday-1)/365.25-1995)/5.
-        f1=1.-f2
-        for n in range(105):
-            g[n]=g95[n]*f1+g00[n]*f2
-            h[n]=h95[n]*f1+h00[n]*f2
-    elif iy < 2005:     # interpolate between 2000 - 2005
-        f2=(iy+(iday-1)/365.25-2000)/5.
-        f1=1.-f2
-        for n in range(105):
-            g[n]=g00[n]*f1+g05[n]*f2
-            h[n]=h00[n]*f1+h05[n]*f2
-    else:               # extrapolate beyond 2005:
-        dt=float(iy)+float(iday-1)/365.25-2005.
-        g = g05
-        h = h05
-        g[0:45] += dg05*dt
-        h[0:45] += dh05*dt
-
-    # coefficients for a given year have been calculated; now multiply
-    # them by schmidt normalization factors:
+    # Compute the m,n related coefficients (following the notation in Davis 2004):
+    # 1. The Schmidt quasi-normalization: S_n,m, which normalizes the associated Legendre polynomials P_n^m
+    #    to the Guassian normalized associated Legendre polynomials P^n,m.
+    #
+    #    Since g_n^m * P_n^m should be constant, mutiplying S_n,m to g_n^m is equivalently converting P_n^m to P^n,m.
+    #    The benefit of doing so is that P^n,m follows simple recursive form, c.f. Eq (16 a-c) and Eq(17 a-b).
+    # 2. rec[mn], which used in the recursion relation.
     k = 14
+    nmn = np.int32((k+1)*k/2)
 
-    s = 1.
-    mn = 1
+    # rec[mn].
+    rec = np.empty(nmn,dtype=float)
+    mn = 0
+    for n in range(k):                  # K^1,m = 0, Eq (17a), automatically done.
+        n2 = 2*n+1
+        n2 = n2*(n2-2)
+        for m in range(n+1):
+            rec[mn] = (n-m)*(n+m)/n2    # K^n,m = (n-m)(n+m)/(2n+1)(2n-1), Eq (17b)
+            mn += 1
+
+    # coefficients for a given time, g_n^m(t), h_n^m(t)
+    g,h = load_igrf(ut)
+
+    # now multiply them by schmidt normalization factors:
+    s = 1.                      # S_0,0 = 1, Eq (18a)
+    mn = 0
     for n in range(1,k):
+        mn += 1                 # skip m=0.
         s *= (2*n-1)/n
-        g[mn] *= s      # g_n,n and h_n,n are normalized by (2n-1)/n?
+        g[mn] *= s              # S_n,0 = S_n-1,0 * (2n-1)/n, Eq (18b)
         h[mn] *= s
         p = s
-        for m in range(n):
-            if m == 0: aa = 2
+        for m in range(1,n+1):
+            if m == 1: aa = 2   # aa = delta_m,1
             else: aa = 1
-            p *= np.sqrt(aa*(n-m)/(n+m+1))
+            p *= np.sqrt(aa*(n-m+1)/(n+m))
             mn += 1
-            g[mn] *= p  # g_m,n norm by sqrt(aa(n-m+1)/(n+m)), Eqn (3.2) in Winch+2005?
-            h[mn] *= p
-        mn += 1
+            g[mn] *= p          # S_n,m = S_n,m-1 * sqrt(aa(n-m+1)/(n+m)), Eq (18c)
+            h[mn] *= p          # now g/h are actually g^n,m, Eq (14 a-b)
 
     g10=-g[1]
     g11= g[2]
@@ -603,7 +353,10 @@ def recalc(iyear,iday,ihour,min,isec):
     ctsl=ct0*sl0
     ctcl=ct0*cl0
 
-    gst,slong,srasn,sdec = sun(iy,iday,ihour,min,isec)
+
+    iy,iday,ihour,min,isec = [np.int32(t) for t in
+        datatype.ut(ut[0]).string('%Y:%j:%H:%M:%S')[0].split(':')]
+    gst,slong,srasn,sdec = sun(ut)
     # s1,s2, and s3 are the components of the unit vector exgsm=exgse in the
     # system gei pointing from the earth's center to the sun:
     s1=np.cos(srasn)*np.cos(sdec)
@@ -702,54 +455,84 @@ def recalc(iyear,iday,ihour,min,isec):
     a32=-z1*sgst+z2*cgst
     a33=z3
 
-def sun(iy,iday,ihour,min,isec):
+def sun(ut):
     """
     Calculates four quantities necessary for coordinate transformations
     which depend on sun position (and, hence, on universal time and season)
+    Based on http://aa.usno.navy.mil/faq/docs/SunApprox.php and http://aa.usno.navy.mil/faq/docs/GAST.php
 
-    :param iy: year number (four digits)
-    :param iday: day of year (day 1 = Jan 1)
-    :param ihour: hour of day (00 to 23)
-    :param min: minute of hour (00 to 59)
-    :param isec: seconds of minute (00 to 59)
-    :return: gst,slong,srasn, sdec. gst - greenwich mean sidereal time, slong - longitude along ecliptic
+    :param ut: ut class, can be array.
+    :return: gst,slong,srasn,sdec. gst - greenwich mean sidereal time, slong - longitude along ecliptic
         srasn - right ascension,  sdec - declination of the sun (radians)
-        Original version of this subroutine has been compiled from: Russell, C.T., Cosmic electrodynamics, 1971, v.2, pp.184-196.
 
-
-    Last modification:  March 31, 2003 (only some notation changes)
-    Original version written by:    Gilbert D. Mead
     Python version by Sheng Tian
     """
-    rad = 57.295779513
 
-    if (iy < 1901) | (iy > 2099):
-        raise ValueError
-    fday=(ihour*3600+min*60+isec)/86400.
-    dj=365*(iy-1900)+(iy-1901)/4+iday-0.5+fday
-    t=dj/36525.
-    vl=np.mod(279.696678+0.9856473354*dj,360.)
-    gst=np.mod(279.690983+.9856473354*dj+360.*fday+180.,360.)/rad
-    g=np.mod(358.475845+0.985600267*dj,360.)/rad
-    slong=(vl+(1.91946-0.004789*t)*np.sin(g)+0.020094*np.sin(2.*g))/rad
-    if slong > 6.2831853: slong=slong-6.2831853
-    if slong< 0: slong=slong+6.2831853
-    obliq=(23.45229-0.0130125*t)/rad
-    sob=np.sin(obliq)
-    slp=slong-9.924e-5
+    twopi = 2*np.pi
+    jd2000 = 2451545.0
+    t_jd = ut.jd()
 
-    # The last constant is a correction for the angular aberration due to the orbital motion of the earth
-    sind=sob*np.sin(slp)
-    cosd=np.sqrt(1.-sind**2)
-    sc=sind/cosd
-    sdec=np.arctan(sc)
-    srasn=3.141592654-np.arctan2(np.cos(obliq)/sob*sc,-np.cos(slp)/cosd)
+    # d = mjd - mj2000.
+    d = t_jd-jd2000
+    d = np.squeeze(d)
 
-    return gst,slong,srasn,sdec
+    # mean obliquity of the ecliptic, e.
+    # e = 23.439 - 0.00000036*d     ; in degree.
+    e = 0.4090877233749509 - 6.2831853e-9*d
+
+    # mean anomaly of the Sun, g.
+    # g = 357.529 + 0.98560028*d    ; in degree.
+    g = 6.2400582213628066 + 0.0172019699945780*d
+    g = np.mod(g, twopi)
+
+    # mean longitude of the Sun, q.
+    # q = 280.459 + 0.98564736*d   ; in degree.
+    q = 4.8949329668507771 + 0.0172027916955899*d
+    q = np.mod(q, twopi)
+
+    # geocentric apparent ecliptic longitude, l.
+    # l = q + 1.915 sin g + 0.020 sin 2g    ; in degree.
+    l = q + 0.0334230551756914*np.sin(g) + 0.0003490658503989*np.sin(2*g)
+
+    # vl - q, mean longitude of the sun.
+    # vl = np.mod(279.696678+0.9856473354*dj,360.)/rad
+    # q = np.mod(4.881627937990388+0.01720279126623886*dj, twopi)
+
+    # g, mean anomaly of the sun.
+    # g = np.mod(358.475845+0.985600267*dj,360.)/rad
+    # g = np.mod(6.256583784118852+0.017201969767685215*dj, twopi)
+
+    # slong - l, geocentric apparent ecliptic longitude.
+    # slong = (vl + (1.91946-0.004789*t)*sin(g) + 0.020094*sin(2*g))/rad
+    # l = q+(0.03350089686033036-2.2884002156881157e-09*dj)*np.sin(g)+0.0003507064598957406*np.sin(2*g)
+    # l = np.mod(l, twopi)
+
+    # obliq - e, mean obliquity of the ecliptic.
+    # obliq = (23.45229-0.0130125*t)/rad
+    # e = 0.40931967763254096-6.217959450123535e-09*dj
+
+    # sin(d) = sin(e) * sin(L)
+    sind = np.sin(e)*np.sin(l)
+    sdec = np.arcsin(sind)
+
+    # tan(RA) = cos(e)*sin(L)/cos(L)
+    srasn = np.arctan2(np.cos(e)*np.sin(l), np.cos(l))
+    srasn = np.mod(srasn, twopi)
+
+
+    # http://aa.usno.navy.mil/faq/docs/GAST.php
+    # gst - gmst, greenwich mean sidereal time.
+    # gst = np.mod(279.690983+.9856473354*dj+360.*fday+180.,360.)/rad
+    # gst = np.mod(4.881528541489487+0.01720279126623886*dj+twopi*fday+np.pi, twopi)
+    # gmst = 18.697374558 + 24.06570982441908*d  # in hour
+    gmst = 4.894961212735792 + 6.30038809898489*d  # in rad
+    gmst = np.mod(gmst, twopi)
+
+    return gmst,l,srasn,sdec
 
 
 
-def geomag (p1,p2,p3, j):
+def geomag(p1,p2,p3, j):
     """
     Converts geographic (geo) to dipole (mag) coordinates or vica versa.
                    j>0                       j<0
@@ -781,7 +564,7 @@ def geomag (p1,p2,p3, j):
         zgeo = zmag*ct0-xmag*st0
         return xgeo,ygeo,zgeo
 
-def geigeo (p1,p2,p3,j):
+def geigeo(p1,p2,p3, j):
     """
     Converts equatorial inertial (gei) to geographical (geo) coords or vica versa.
                    j>0                       j<0
@@ -813,7 +596,7 @@ def geigeo (p1,p2,p3,j):
         zgei = zgeo
         return xgei,ygei,zgei
 
-def magsm (p1,p2,p3,j):
+def magsm(p1,p2,p3, j):
     """
     Converts dipole (mag) to solar magnetic (sm) coordinates or vica versa
                    j>0                       j<0
@@ -845,7 +628,7 @@ def magsm (p1,p2,p3,j):
         zmag = zsm
         return xmag,ymag,zmag
 
-def gsmgse (p1,p2,p3,j):
+def gsmgse(p1,p2,p3, j):
     """
     converts geocentric solar magnetospheric (gsm) coords to solar ecliptic (gse) ones or vica versa.
                    j>0                       j<0
@@ -873,7 +656,7 @@ def gsmgse (p1,p2,p3,j):
         zgsm = zgse*chi-ygse*shi
         return xgsm,ygsm,zgsm
 
-def smgsm (p1,p2,p3,j):
+def smgsm(p1,p2,p3, j):
     """
     Converts solar magnetic (sm) to geocentric solar magnetospheric (gsm) coordinates or vica versa.
                    j>0                       j<0
@@ -905,7 +688,7 @@ def smgsm (p1,p2,p3,j):
         zsm = xgsm*sps+zgsm*cps
         return xsm,ysm,zsm
 
-def geogsm(p1,p2,p3,j):
+def geogsm(p1,p2,p3, j):
     """
     Converts geographic (geo) to geocentric solar magnetospheric (gsm) coordinates or vica versa.
                    j>0                       j<0
@@ -978,7 +761,7 @@ def sphcar(p1,p2,p3, j):
             else: theta = 0
         return r,theta,phi
 
-def bspcar (theta,phi,br,btheta,bphi):
+def bspcar(theta,phi,br,btheta,bphi):
     """
     Calculates cartesian field components from spherical ones.
 
@@ -1002,7 +785,7 @@ def bspcar (theta,phi,br,btheta,bphi):
 
     return bx,by,bz
 
-def bcarsp (x,y,z,bx,by,bz):
+def bcarsp(x,y,z,bx,by,bz):
     """
     Calculates spherical field components from those in cartesian system
 
@@ -1038,10 +821,14 @@ def bcarsp (x,y,z,bx,by,bz):
 def call_external_model(exname, iopt, parmod, ps, x,y,z):
     if exname == 't89':
         return t89.t89c(iopt, parmod, ps, x,y,z)
+    elif exname == 't96':
+        return t96.t96(iopt, parmod, ps, x,y,z)
+    elif exname == 't01':
+        return t01.t01(iopt, parmod, ps, x,y,z)
     elif exname == 't04':
-        pass
+        return t04.t04(iopt, parmod, ps, x,y,z)
     else:
-        pass
+        raise ValueError
 
 def call_internal_model(inname, x,y,z):
     if inname == 'dipole':
@@ -1333,7 +1120,7 @@ def shuetal_mgnp(xn_pd,vel,bzimf,xgsm,ygsm,zgsm):
 
     return xmgnp,ymgnp,zmgnp, dist, id
 
-def t96_mgnp (xn_pd,vel,xgsm,ygsm,zgsm):
+def t96_mgnp(xn_pd,vel,xgsm,ygsm,zgsm):
     """
     For any point of space with given coordinates (xgsm,ygsm,zgsm), this subroutine defines
     the position of a point (xmgnp,ymgnp,zmgnp) at the T96 model magnetopause, having the
@@ -1424,14 +1211,10 @@ def t96_mgnp (xn_pd,vel,xgsm,ygsm,zgsm):
 # # tests.
 #
 # # test recalc.
-# iyear = 2001
-# iday = 1
-# ihour = 2
-# min = 3
-# isec = 4
+# ut = datatype.ut('2001-01-01/02:03:04')
 #
 # print('Test recalc: ')
-# recalc(iyear,iday,ihour,min,isec)
+# recalc(ut)
 # print(st0, ct0, sl0, cl0)
 # print(a11, a12, a13)
 #
@@ -1446,8 +1229,8 @@ def t96_mgnp (xn_pd,vel,xgsm,ygsm,zgsm):
 #
 # # test sun
 # print('Test sun: ')
-# gst, slong, srasn, sdec = sun(iyear,iday,ihour,min,isec)
-# print(gst, slong, srasn, sdec)
+# gst, slong, srasn, sdec = sun(ut)
+# print('gst,slong,srasn,sdec: ', gst, slong, srasn, sdec)
 #
 #
 # # test sphcar
@@ -1458,72 +1241,89 @@ def t96_mgnp (xn_pd,vel,xgsm,ygsm,zgsm):
 # print(r,theta,phi)
 #
 #
-# # test coord trans.
-# print('Test cotrans: ')
-# xgsm = 6.1
-# ygsm = 0.3
-# zgsm = 3.2
-# print('GSM: ', xgsm,ygsm,zgsm)
-# xgeo,ygeo,zgeo = geogsm(xgsm,ygsm,zgsm, -1)
-# print('GEO: ', xgeo,ygeo,zgeo)
-# xgse,ygse,zgse = gsmgse(xgsm,ygsm,zgsm, 1)
-# print('GSE: ', xgse,ygse,zgse)
-# xsm,ysm,zsm = smgsm(xgsm,ygsm,zgsm, -1)
-# print('SM:  ', xsm,ysm,zsm)
-# xmag,ymag,zmag = magsm(xsm,ysm,zsm, -1)
-# print('MAG: ', xmag,ymag,zmag)
-# xgei,ygei,zgei = geigeo(xgeo,ygeo,zgeo, -1)
-# print('GEI: ', xgei,ygei,zgei)
-# xmag,ymag,zmag = geomag(xgeo,ygeo,zgeo, 1)
-# print('MAG2:', xmag,ymag,zmag)
-#
-# # test igrf_gsm and dip
-# print('Test igrf_gsm and dip: ')
-# b1,b2,b3 = igrf_gsm(xgsm, ygsm, zgsm)
-# print(b1,b2,b3)
-# b1,b2,b3 = dip(xgsm, ygsm, zgsm)
-# print(b1,b2,b3)
-#
-# # test bspcar, bcarsp
-# print('Test bspcar and bcarsp: ')
-# b1,b2,b3 = bcarsp(xgsm,ygsm,zgsm, b1,b2,b3)
-# print(b1,b2,b3)
-# r,theta,phi = sphcar(xgsm,ygsm,zgsm, -1)
-# b1,b2,b3 = bspcar(theta,phi, b1,b2,b3)
-# print(b1,b2,b3)
-#
-# # test t96_mgnp, shuetal_mgnp.
-# print('Test magnetopause models: ')
-# pdyn = 10.
-# vel = -1
-# bz = -5
-# x1,y1,z1, r, id = t96_mgnp(pdyn, vel, xgsm,ygsm,zgsm)
-# print(x1,y1,z1, r)
-# x1,y1,z1, r, id = shuetal_mgnp(pdyn, vel, bz, xgsm,ygsm,zgsm)
-# print(x1,y1,z1, r)
-#
-# den = 10.
-# vel = 500.
-# x1,y1,z1, r, id = t96_mgnp(pdyn, vel, xgsm,ygsm,zgsm)
-# print(x1,y1,z1, r)
-# x1,y1,z1, r, id = shuetal_mgnp(pdyn, vel, bz, xgsm,ygsm,zgsm)
-# print(x1,y1,z1, r)
-#
-#
-#
+
+
+# test Tsy-models.
+x,y,z,ps = [-5.1,0.3,2.8, -0.533585131]
+iopt = 2
+par = [2,-87,2,-5, 0,0, ps,x,y,z]
+
+print('T89')
+bx,by,bz = t89.t89c(iopt, par, ps,x,y,z)
+print(bx,by,bz)
+print('T96')
+bx,by,bz = t96.t96(0, par, ps,x,y,z)
+print(bx,by,bz)
+print('T01')
+bx,by,bz = t01.t01(0, par, ps,x,y,z)
+print(bx,by,bz)
+print('T04')
+bx,by,bz = t04.t04(0, par, ps,x,y,z)
+print(bx,by,bz)
+
+# test dipole and IGRF.
+ut = datatype.ut('2001-01-01/02:03:04')
+x,y,z = [-5.1,0.3,2.8]
+recalc(ut)
+print('Dipole')
+bx,by,bz = dip(x,y,z)
+print(bx,by,bz)
+print('IGRF')
+bx,by,bz = igrf_gsm(x,y,z)
+print(bx,by,bz)
+
+# test coord trans.
+print('Test cotrans: ')
+xgsm,ygsm,zgsm = [x,y,z]
+print('GSM: ', xgsm,ygsm,zgsm)
+xgeo,ygeo,zgeo = geogsm(xgsm,ygsm,zgsm, -1)
+print('GEO: ', xgeo,ygeo,zgeo)
+xgse,ygse,zgse = gsmgse(xgsm,ygsm,zgsm, 1)
+print('GSE: ', xgse,ygse,zgse)
+xsm,ysm,zsm = smgsm(xgsm,ygsm,zgsm, -1)
+print('SM:  ', xsm,ysm,zsm)
+xmag,ymag,zmag = magsm(xsm,ysm,zsm, -1)
+print('MAG: ', xmag,ymag,zmag)
+xgei,ygei,zgei = geigeo(xgeo,ygeo,zgeo, -1)
+print('GEI: ', xgei,ygei,zgei)
+xmag,ymag,zmag = geomag(xgeo,ygeo,zgeo, 1)
+print('MAG2:', xmag,ymag,zmag)
+
+
 # test trace, step, rhand.
-# print('Test trace: ')
-# iopt = 2
-# ps = -0.533585131
-# xgsm,ygsm,zgsm = [-5.1,0.3,-2.8]
-# par = [2,-87,2,-5, 0,0, ps, xgsm,ygsm,zgsm]
-# exname = 't89'
-# inname = 'igrf'
-# dir = -1
-# rlim = 10
-# r0 = 1.1
-# xf,yf,zf = trace(xgsm,ygsm,zgsm, dir, rlim, r0, iopt, par, exname, inname)
-# print('initial position: ')
-# print(xgsm,ygsm,zgsm)
-# print('footpoint position: ')
-# print(xf,yf,zf)
+print('Test trace: ')
+inname = 'igrf'
+dir = -1
+rlim = 10
+r0 = 1.1
+
+exname = 't89'
+xf,yf,zf = trace(xgsm,ygsm,zgsm, dir, rlim, r0, iopt, par, exname, inname)
+print('T89', xf,yf,zf)
+exname = 't96'
+xf,yf,zf = trace(xgsm,ygsm,zgsm, dir, rlim, r0, iopt, par, exname, inname)
+print('T96', xf,yf,zf)
+exname = 't01'
+xf,yf,zf = trace(xgsm,ygsm,zgsm, dir, rlim, r0, iopt, par, exname, inname)
+print('T01', xf,yf,zf)
+exname = 't04'
+xf,yf,zf = trace(xgsm,ygsm,zgsm, dir, rlim, r0, iopt, par, exname, inname)
+print('T04', xf,yf,zf)
+
+
+
+# test t96_mgnp, shuetal_mgnp.
+print('Test magnetopause models: ')
+pdyn = 10.
+vel = -1
+bz = -5
+x1,y1,z1, r, id = t96_mgnp(pdyn, vel, xgsm,ygsm,zgsm)
+print(x1,y1,z1, r)
+x1,y1,z1, r, id = shuetal_mgnp(pdyn, vel, bz, xgsm,ygsm,zgsm)
+print(x1,y1,z1, r)
+den = 10.
+vel = 500.
+x1,y1,z1, r, id = t96_mgnp(pdyn, vel, xgsm,ygsm,zgsm)
+print(x1,y1,z1, r)
+x1,y1,z1, r, id = shuetal_mgnp(pdyn, vel, bz, xgsm,ygsm,zgsm)
+print(x1,y1,z1, r)
