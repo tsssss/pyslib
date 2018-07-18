@@ -17,6 +17,11 @@ import string
 
 class ut(object):
     t0_datetime = datetime.datetime(1970,1,1)
+    secofday = 86400.
+    secofday1 = 1/secofday
+    t0_jd = 2440587.5       # in day, 0 of Julian day.
+    t0_mjd = 40587.         # in day, 0 of modified Julian day.
+    t0_sdt = 50716800.      # in sec, 0 of times in SDT.
 
     # real part is the ut second, imaginary part is the fractional second.
     def __init__(self, times, format=''):
@@ -85,6 +90,18 @@ class ut(object):
                 dt_dt = np.mod(t_dt, np.int64(1e9))   # the part of fractional sec in nano sec.
                 self.t_ep16.real = t0_ut+(t_dt-dt_dt)*1e-9
                 self.t_ep16.imag = dt_dt*1e-9
+            elif format == 'mjd':       # modified Julian day, in day.
+                t_ut = (t_input-self.t0_mjd)*self.secofday
+                self.t_ep16.imag = np.remainder(t_ut, 1)
+                self.t_ep16.real = t_ut-self.t_ep16.imag
+            elif format == 'jd':        # Julian day, in day.
+                t_ut = (t_input-self.t0_jd)*self.secofday
+                self.t_ep16.imag = np.remainder(t_ut, 1)
+                self.t_ep16.real = t_ut-self.t_ep16.imag
+            elif format == 'sdt':       # times in SDT, in sec, has a different zero time.
+                t_ut = t_input-self.t0_sdt
+                self.t_ep16.imag = np.remainder(t_ut, 1)
+                self.t_ep16.real = t_ut-self.t_ep16.imag
 
 
     def __getitem__(self, item):
@@ -164,6 +181,17 @@ class ut(object):
             t_datetime.append(datetime.datetime.utcfromtimestamp(t_ut))
         return t_datetime
 
+    def mjd(self):
+        ut = self.t_ep16.real+self.t_ep16.imag
+        return ut*self.secofday1 + self.t0_mjd
+
+    def jd(self):
+        ut = self.t_ep16.real+self.t_ep16.imag
+        return ut*self.secofday1 + self.t0_jd
+
+    def sdt(self):
+        ut = self.t_ep16.real+self.t_ep16.imag
+        return ut + self.t0_sdt
 
 #---Hold, plot, data.
 class sdata(object):
