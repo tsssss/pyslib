@@ -1,9 +1,9 @@
 import os.path
-import sread.utils.utils_old as utils_old
+import mission.obsolete.utils_old as utils_old
 import re
-import cdf
+import mission.obsolete.cdf as cdf
 import numpy as np
-import datatype
+import mission.obsolete.datatype as datatype
 
 
 def read_block(utr0, vars, rempattern, locpattern, rem_index, loc_index, update_index, prefix=''):

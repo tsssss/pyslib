@@ -1,21 +1,8 @@
 import os
-import time
-from utils import utils
-from rbsp import local_data_root,all_probes
+from .. import rbsp
+from .. import utils
 
-
-hope_latest_release = 'rel04'
-
-def get_valid_range(probe):
-    vr = {
-        'a': ['2012-10-25','2019-10-14/24:00'],
-        'b': ['2012-10-25','2019-07-16/24:00'],
-    }
-    time_range = utils.prepare_time_range(vr[probe])
-    if len(time_range) == 1:
-        time_range.append(time.time())
-    return time_range
-
+# HOPE.
 def hope(
     input_time_range,
     probe,
@@ -23,15 +10,26 @@ def hope(
     local_files=[],
     file_times=None,
     version='v*',
-    release=hope_latest_release,
-    local_data_dir=local_data_root,
+    release=None,
+    local_data_dir=rbsp.local_data_root,
 ):
 
+    # Settings.
+    hope_valid_range = {
+        'a': ['2012-10-25','2019-10-14/24:00'],
+        'b': ['2012-10-25','2019-07-16/24:00'],
+    }
+
+
     # Check inputs.
-    assert probe in all_probes
+    assert probe in rbsp.all_probes
     rbspx = 'rbsp'+probe
     prefix = 'rbsp'+probe+'_'
     time_range = utils.prepare_time_range(input_time_range)
+
+    latest_release = 'rel04'
+    if release is None:
+        release = latest_release
 
     # A look up dictionary containing the info of remote and local data locations.
     file_requests = dict()
@@ -39,7 +37,7 @@ def hope(
     # cdaweb.
     # L3 moments.
     id = 'l3%mom'
-    valid_range = get_valid_range(probe)
+    valid_range = hope_valid_range[probe]
     base_name = prefix+release+'_ect-hope-mom-l3_%Y%m%d_'+version+'.cdf'
     local_path = os.path.join(rbspx,'hope','level3','mom_'+release,'%Y')
     remote_path = os.path.join(rbspx,'l3','ect','hope','moments',release,'%Y')
@@ -52,7 +50,7 @@ def hope(
 
     # L3 pitch angle.
     id = 'l3%pa'
-    valid_range = get_valid_range(probe)
+    valid_range = hope_valid_range[probe]
     base_name = prefix+release+'_ect-hope-pa-l3_%Y%m%d_'+version+'.cdf'
     local_path = os.path.join(rbspx,'hope','level3','pa_'+release,'%Y')
     remote_path = os.path.join(rbspx,'l3','ect','hope','pitchangle',release,'%Y')
@@ -65,7 +63,7 @@ def hope(
 
     # L2.
     id = 'l2%sector'
-    valid_range = get_valid_range(probe)
+    valid_range = hope_valid_range[probe]
     base_name = prefix+release+'_ect-hope-sci-l2_%Y%m%d_'+version+'.cdf'
     local_path = os.path.join(rbspx,'hope','level2','sectors_'+release,'%Y')
     remote_path = os.path.join(rbspx,'l2','ect','hope','sectors',release,'%Y')

@@ -12,10 +12,5 @@ valid_range = {
     'b': ['2012-09-05','2019-07-16/24:00'],
 }
 
-# def valid_range(id, probe):
-#     assert id in valid_range
-#     assert probe in all_probes
-#     time_range = time_double(valid_range[id][probe])
-#     if len(time_range) == 1:
-#         time_range.append(time.time())
-#     return time_range
+
+from .hope import hope

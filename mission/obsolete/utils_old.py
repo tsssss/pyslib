@@ -7,7 +7,7 @@ import email.utils as eut
 import time
 import datetime
 import numpy as np
-import datatype
+import mission.obsolete.datatype as datatype
 
 
 #---Plotting variable.
