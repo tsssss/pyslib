@@ -1,4 +1,5 @@
 import os
+from .. import utils
 
 # Default settings.
 local_data_root = os.path.join('/Volumes/data','rbsp')
@@ -13,4 +14,21 @@ valid_range = {
 }
 
 
-from .hope import hope
+
+def file_request(
+    input_time_range,
+    probe,
+):
+
+    assert probe in all_probes, f'Invalid probe: {probe} ...'
+
+    file_request = dict()
+    file_request['time_range'] = utils.prepare_time_range(input_time_range)
+    file_request['probe'] = probe
+    file_request['valid_range'] = utils.prepare_time_range(valid_range[probe])
+
+    return file_request
+
+
+
+from . import hope

@@ -57,6 +57,15 @@ def prepare_time_range(input_time_range):
     return time_range
 
 
+def validate_time_range(input_time_range, vr):
+    if vr is None: return input_time_range
+
+    tr = input_time_range.copy()
+    if tr[0] < vr[0]: tr[0] = vr[0]
+    if tr[1] > vr[1]: tr[1] = vr[1]
+    return tr
+
+
 def break_down_times(time, cadence='day'):
     """
     Return a list of times for a given time or time range and cadence.
@@ -142,43 +151,6 @@ def download_file(remote_file, local_file):
         return local_file[0]
 
 
-"""
-def prepare_files(
-    file_request,
-    time_range=None,
-    file_times=None,
-    local_files=None
-):
-
-    if local_files is None:
-        assert type(file_request) is dict
-
-        # Prepare file_times, using cadence and time_range.
-        try:
-            cadence = file_request['cadence']
-        except:
-            cadence = 'day'
-
-        if file_times is None:
-            assert time_range is not None
-            file_times = break_down_times(time_range, cadence)
-
-        # Get local files.
-        local_pattern = file_request['local_pattern']
-        local_files = time_string(file_times, fmt=local_pattern)
-
-    if 'remote_pattern' in file_request:
-        remote_pattern = file_request['remote_pattern']
-        remote_files = time_string(file_times, fmt=remote_pattern)
-    else:
-        remote_files = None
-
-    if remote_files is None:
-        return local_files
-
-    assert len(local_files) == len(remote_files)
-    return local_files, remote_files
-"""
 
 def prepare_files(request):
 
@@ -194,19 +166,16 @@ def prepare_files(request):
 
     # time_range. By default is a pair of unix timestamps.
     key = 'time_range'
-    if key in request:
-        # Convert time_range to double and fit to valid_range.
-        time_range = prepare_time_range(request['time_range'])
-        key = 'valid_range'
-        if key in request:
-            valid_range = prepare_time_range(request[key])
-            if time_range[0] < valid_range[0]: time_range[0] = valid_range[0]
-            if time_range[1] > valid_range[1]: time_range[1] = valid_range[1]
-        request[key] = time_range
-    else:
-        # Set time_range to None.
-        request[key] = None
+    if key not in request: request[key] = None
     time_range = request[key]
+
+    # valid_range. By default is a pair of unix timestamps.
+    key = 'valid_range'
+    if key not in request: request[key] = None
+    valid_range = request[key]
+
+    # validated_time_range. By default is time_range.
+    validated_time_range = validate_time_range(time_range, valid_range)
 
 
     # file_times. This is used to replace pattern to actual file names.
@@ -215,7 +184,7 @@ def prepare_files(request):
         request[key] = None
     if request[key] is None:
         # Need to get file_times from time_range.
-        file_times = break_down_times(time_range, cadence)
+        file_times = break_down_times(validated_time_range, cadence)
         request[key] = file_times
     file_times = request[key]
 
