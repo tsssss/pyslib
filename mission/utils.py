@@ -194,19 +194,14 @@ def prepare_files(request):
 
     # time_range. By default is a pair of unix timestamps.
     key = 'time_range'
-    if key in request:
-        # Convert time_range to double and fit to valid_range.
-        time_range = prepare_time_range(request['time_range'])
-        key = 'valid_range'
-        if key in request:
-            valid_range = prepare_time_range(request[key])
-            if time_range[0] < valid_range[0]: time_range[0] = valid_range[0]
-            if time_range[1] > valid_range[1]: time_range[1] = valid_range[1]
-        request[key] = time_range
-    else:
+    if not key in request:
         # Set time_range to None.
         request[key] = None
     time_range = request[key]
+    # Overwrite with validated time range if it's available.
+    key = 'validated_time_range'
+    if key in request:
+        time_range = request[key]
 
 
     # file_times. This is used to replace pattern to actual file names.

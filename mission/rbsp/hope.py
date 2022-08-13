@@ -2,7 +2,6 @@ import os
 from .. import rbsp
 from .. import utils
 
-# HOPE.
 def hope(
     input_time_range,
     probe,
@@ -14,22 +13,17 @@ def hope(
     local_data_dir=rbsp.local_data_root,
 ):
 
-    # Settings.
-    hope_valid_range = {
-        'a': ['2012-10-25','2019-10-14/24:00'],
-        'b': ['2012-10-25','2019-07-16/24:00'],
-    }
 
 
-    # Check inputs.
-    assert probe in rbsp.all_probes
-    rbspx = 'rbsp'+probe
-    prefix = 'rbsp'+probe+'_'
-    time_range = utils.prepare_time_range(input_time_range)
+    hope_info = rbsp.RBSP.HOPE(input_time_range, probe, input_id)
+    file_request = hope_info.file_request
+    probe = file_request['probe']
+    rbspx = file_request['rbspx']
+    prefix = file_request['prefix']
+    time_range = file_request['validated_time_range']
 
-    latest_release = 'rel04'
     if release is None:
-        release = latest_release
+        release = hope_info.latest_release
 
     # A look up dictionary containing the info of remote and local data locations.
     file_requests = dict()
