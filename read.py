@@ -1,5 +1,5 @@
 import os.path
-import utils
+import sread.utils.utils_old as utils_old
 import re
 import cdf
 import numpy as np
@@ -21,8 +21,8 @@ def read_block(utr0, vars, rempattern, locpattern, rem_index, loc_index, update_
     """
 
     # replace pattern with given time.
-    remfns = utils.prepfile(utr0, rempattern)
-    locfns = utils.prepfile(utr0, locpattern)
+    remfns = utils_old.prepfile(utr0, rempattern)
+    locfns = utils_old.prepfile(utr0, locpattern)
 
     # prepare each file in the list.
     for i in range(0,len(locfns)):
@@ -33,7 +33,7 @@ def read_block(utr0, vars, rempattern, locpattern, rem_index, loc_index, update_
         locbfn = os.path.basename(locfns[i])
 
         if not os.path.exists(locidx) or update_index == True:
-            utils.getfile(locidx, rempath=remdir)
+            utils_old.getfile(locidx, rempath=remdir)
 
         # check local index.
         # filter out the related files.
@@ -51,7 +51,7 @@ def read_block(utr0, vars, rempattern, locpattern, rem_index, loc_index, update_
         locfns[i] = os.path.join(locdir,thefns[-1])
 
         # get the file.
-        locfns[i] = utils.getfile(locfns[i], rempath=remdir)
+        locfns[i] = utils_old.getfile(locfns[i], rempath=remdir)
 
     # read data.
     dat0 = cdf.read(locfns[0], vars=vars, prefix=prefix)
@@ -122,8 +122,8 @@ def var_block(dat0, utvar0, utvar1, var0s, var1s, utr0):
 def omni(utr0, datatype='1min', vars='', version='', update_index=False):
     # utr0 in ut sec. Can be 1 element, or a time range.
 
-    if not os.path.exists(utils.DATA_ROOT_DIR): raise FileNotFoundError
-    loc_root = os.path.join(utils.DATA_ROOT_DIR, 'omni')
+    if not os.path.exists(utils_old.DATA_ROOT_DIR): raise FileNotFoundError
+    loc_root = os.path.join(utils_old.DATA_ROOT_DIR, 'omni')
     loc_index = 'SHA1SUM'
     rem_root = 'https://cdaweb.sci.gsfc.nasa.gov/pub/data/omni/omni_cdaweb'
     rem_index = 'SHA1SUM'
@@ -154,7 +154,7 @@ def omni(utr0, datatype='1min', vars='', version='', update_index=False):
     for i in range(0,len(tvar0s)):
         try:
             time0 = dat0.data[tvar0s[i]]
-            time1 = utils.UT(time0, 'epoch')
+            time1 = utils_old.UT(time0, 'epoch')
             time1 = time1.ut()
             dat0.data[tvar1s[i]] = time1
             if len(utr0) == 2:
@@ -263,8 +263,8 @@ class themis(datatype.sdata):
 
 #---reading functions based on instrument.
     def EFI(self, utr0, datatype='efi', level='l2', vars='', version='', update_index=False):
-        if not os.path.exists(utils.DATA_ROOT_DIR): raise FileNotFoundError
-        loc_root = os.path.join(utils.DATA_ROOT_DIR, 'themis')
+        if not os.path.exists(utils_old.DATA_ROOT_DIR): raise FileNotFoundError
+        loc_root = os.path.join(utils_old.DATA_ROOT_DIR, 'themis')
         loc_index = 'SHA1SUM'
         rem_root = 'https://cdaweb.sci.gsfc.nasa.gov/pub/data/themis'
         rem_index = 'SHA1SUM'
@@ -288,8 +288,8 @@ class themis(datatype.sdata):
 
 
     def FGM(self, utr0, datatype='fgm', level='l2', vars='', version='', update_index=False):
-        if not os.path.exists(utils.DATA_ROOT_DIR): raise FileNotFoundError
-        loc_root = os.path.join(utils.DATA_ROOT_DIR, 'themis')
+        if not os.path.exists(utils_old.DATA_ROOT_DIR): raise FileNotFoundError
+        loc_root = os.path.join(utils_old.DATA_ROOT_DIR, 'themis')
         loc_index = 'SHA1SUM'
         rem_root = 'https://cdaweb.sci.gsfc.nasa.gov/pub/data/themis'
         rem_index = 'SHA1SUM'
@@ -314,8 +314,8 @@ class themis(datatype.sdata):
 
 class rbsp(object):
     def __init__(self, probe):
-        if not os.path.exists(utils.DATA_ROOT_DIR): raise FileNotFoundError
-        self.loc_root = os.path.join(utils.DATA_ROOT_DIR, 'rbsp')
+        if not os.path.exists(utils_old.DATA_ROOT_DIR): raise FileNotFoundError
+        self.loc_root = os.path.join(utils_old.DATA_ROOT_DIR, 'rbsp')
 
         self.probe = probe
         self.data = {}
@@ -373,7 +373,7 @@ class rbsp(object):
         for i in range(0,len(tvar0s)):
             try:
                 time0 = dat0.data[tvar0s[i]]
-                time1 = utils.UT(time0, 'tt2000')
+                time1 = utils_old.UT(time0, 'tt2000')
                 time1 = time1.ut()
                 dat0.data[tvar1s[i]] = time1
                 for tkey in keys:
