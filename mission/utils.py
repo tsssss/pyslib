@@ -1,10 +1,14 @@
 import os.path
+import sys
+import socket
+import getpass
 from pyspedas.utilities.download import download
 from pyspedas.utilities.time_string import time_string
 from pyspedas.utilities.time_double import time_double
 import itertools
 import numpy as np
 from pathlib import Path
+from pytplot import cdf_to_tplot, tplot_rename
 
 def mkarthm(a, b, c, mode):
     """
@@ -144,7 +148,7 @@ def download_file(remote_file, local_file):
     base = os.path.basename(remote_file)
     # verify=False to skip SSL/TLS certificate, which may stop downloading a file.
     local_file = download(remote_file=base, remote_path=remote_dir,
-        local_path=local_dir, last_version=True, verify=False)
+        local_path=local_dir, last_version=True, verify=True)
     if len(local_file) == 0:
         return ''
     else:
@@ -258,6 +262,65 @@ def prepare_files(request):
         request['local_files'] = out_files
         request['nonexist_files'] = nonexist_files
     return out_files
+
+# Return the root directory of the current script.
+def rootdir():
+    myname = sys.argv[0]
+    mypath = os.path.dirname(sys.argv[0])
+    return os.path.abspath(mypath)
+
+
+# Return the home directory of the current logged in user.
+def homedir():
+    return os.path.expanduser('~')
+
+
+# Return the directory of the given external disk.
+def diskdir(disk):
+    platform = sys.platform
+    
+    win = ['win32']
+    unix = ['linux2','cygwin','os2','os2emx','riscos','atheos']
+    mac = ['darwin']
+
+    if platform in mac:
+        dir = '/'.join(['','Volumes',disk])
+    elif platform in unix:
+        dir = '/'.join(['','media',disk])
+    elif platform in win:
+        dir = None
+# doesn't work so far.
+#        for letter in string.ascii_uppercase:
+#            drive[letter] = os.path.exists(letter+':')
+#        return '/'.join([letter,disk])
+    else:
+        dir = None
+    
+    return dir
+
+
+# return [user,hostname].
+def usrhost():
+    usr = getpass.getuser()
+    host = socket.gethostname()
+    return [usr,host]
+
+
+def read_var(var_request):
+    files = var_request['local_files']
+    in_vars = var_request['in_vars']
+    vars = cdf_to_tplot(files, varnames=in_vars)
+
+    key = 'out_vars'
+    if key not in var_request:
+        var_request[key] = []
+    out_vars = var_request[key]
+    if len(out_vars) != len(in_vars): out_vars = in_vars
+    if out_vars != vars:
+        for var, out_var in zip(vars,out_vars):
+            tplot_rename(var, out_var)
+    
+    return out_vars
 
 
 

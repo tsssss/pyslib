@@ -7,6 +7,8 @@ valid_range = {
     'b': ['2012-10-25','2019-07-16/24:00'],
 }
 
+species = ['e','p','o','he']
+
 def load_file(
     input_time_range,
     probe,
@@ -30,8 +32,8 @@ def load_file(
     rbspx = 'rbsp'+probe
     prefix = 'rbsp'+probe+'_'
     file_request = rbsp.file_request(input_time_range, probe)
-    file_request['valid_range'] = valid_range[probe]
     if file_times is not None: file_request['file_times'] = file_times
+    file_request['valid_range'] = utils.prepare_time_range(valid_range[probe])
 
 
     # A look up dictionary containing the info of remote and local data locations.
