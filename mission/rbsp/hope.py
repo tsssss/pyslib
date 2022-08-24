@@ -8,24 +8,20 @@ valid_range = {
 }
 
 species = ['e','p','o','he']
+latest_release = 'rel04'
 
 def load_file(
     input_time_range,
     probe,
     input_id,
     version='v*',
-    release=None,
+    release=latest_release,
     file_times=None,
     local_data_dir=rbsp.local_data_root,
-    remote_data_dir=None,
+    remote_data_dir='https://cdaweb.gsfc.nasa.gov/pub/data/rbsp/',
 ):
 
     """ Take input time, probe, and id, then find and return the actual files."""
-
-    # Settings.
-    if remote_data_dir is None: remote_data_dir = 'https://cdaweb.gsfc.nasa.gov/pub/data/rbsp/'
-    latest_release = 'rel04'
-    if release is None: release = latest_release
 
 
     # Get the rbsp-general file request.

@@ -1,9 +1,10 @@
 import os
-from .. import utils
+import libs.system as system
+import mission.utils as utils
 
 # Default settings.
-local_data_root = os.path.join(utils.diskdir('data'),'rbsp')
-if not os.path.exists(local_data_root): local_data_root = os.path.join(utils.homedir(),'data','rbsp')
+local_data_root = os.path.join(system.diskdir('data'),'rbsp')
+if not os.path.exists(local_data_root): local_data_root = os.path.join(system.homedir(),'data','rbsp')
 assert os.path.exists(local_data_root), f'{local_data_root} does not exist ...'
 assert os.path.isdir(local_data_root), f'{local_data_root} is not a directory ...'
 
@@ -34,3 +35,5 @@ def file_request(
 
 from . import hope
 from . import efw
+from . import read
+from . import ssc

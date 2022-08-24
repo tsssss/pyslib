@@ -1,60 +1,15 @@
 import os.path
-import sys
-import socket
-import getpass
 from pyspedas.utilities.download import download
 from pyspedas.utilities.time_string import time_string
 from pyspedas.utilities.time_double import time_double
-import itertools
-import numpy as np
 from pathlib import Path
 from pytplot import cdf_to_tplot, tplot_rename
-
-def mkarthm(a, b, c, mode):
-    """
-    mode='x0', a=x0, b=dx, c=n
-    mode='x1', a=x1, b=dx, c=n
-    mode='dx', a=x0, b=x1, c=dx
-    mode='n' , a=x0, b=x1, c=n
-    :param x0: the first element
-    :param x1: the last element
-    :param dx: the step between elements
-    :param n: the number of element
-    :return: a list of array
-
-    print(utils.mkarthm(0,1,9, 'x0'))
-    print(utils.mkarthm(0,-1,9, 'x1'))
-    print(utils.mkarthm(0,10,1,'dx'))
-    print(utils.mkarthm(0,10,5,'n'))
-    """
-
-    assert mode in ['x0','x1','dx','n']
-
-    if mode == 'x0':
-        return a+b*np.arange(c)
-    elif mode == 'x1':
-        return a-b*np.flip(np.arange(c))
-    elif mode == 'dx':
-        ns = (b-a)/c
-        if ns-np.floor(ns) >= 0.9: ns = np.round(ns)
-        else: ns = np.floor(ns)
-        ns += 1
-        return a+c*np.arange(ns)
-    else:
-        dx = (b-a)/(c-1)
-        return a+dx*np.arange(c)
-
-
-def sort_uniq(seq):
-    """
-    Return a sorted and uniq list of the input list.
-    :param seq: input list.
-    :return: output list.
-    """
-    return (x[0] for x in itertools.groupby(sorted(seq)))
+import constant
+import libs.math as math
 
 
 def prepare_time_range(input_time_range):
+    if input_time_range is None: return None
     time_range = input_time_range.copy()
     if type(time_range[0]) is str: time_range = time_double(time_range)
     time_range = sorted(time_range)
@@ -90,7 +45,7 @@ def break_down_times(time, cadence='day'):
         return time_range
     if type(time_range[0]) is str: time_range = time_double(time_range)
 
-    secofday = 86400.
+    secofday = constant.secofday
     if type(cadence) is str:
         if cadence == 'year':
             format = '%Y'
@@ -128,10 +83,10 @@ def break_down_times(time, cadence='day'):
     ntime = (t1-t0)/dt
     if ntime == 0: return [t0]
 
-    times = mkarthm(t0, t1, ntime+1, 'n')
+    times = math.mkarthm(t0, t1, ntime+1, 'n')
     if format is not None:
         str_times = time_string(times, fmt=format)
-        times = time_double(sort_uniq(str_times))
+        times = time_double(math.sort_uniq(str_times))
 
     return times
 
@@ -147,167 +102,95 @@ def download_file(remote_file, local_file):
     local_dir = os.path.dirname(local_file)+'/'
     base = os.path.basename(remote_file)
     # verify=False to skip SSL/TLS certificate, which may stop downloading a file.
-    local_file = download(remote_file=base, remote_path=remote_dir,
-        local_path=local_dir, last_version=True, verify=True)
-    if len(local_file) == 0:
-        return ''
-    else:
-        return local_file[0]
+    try:
+        local_file = download(remote_file=base, remote_path=remote_dir, local_path=local_dir, last_version=True, verify=True)
+    except:
+        local_file = download(remote_file=base, remote_path=remote_dir, local_path=local_dir, last_version=True, verify=False)
+    if len(local_file) == 0: return None
+    return local_file[0]
 
+def check_file_existence(files):
+    exist_files = []
+    nonexist_files = []
+    for file in files:
+        path = os.path.dirname(file)
+        base = os.path.basename(file)
+        f = [str(file) for file in Path(path).glob(base)]
+        try:
+            file = (sorted(f))[-1]
+            exist_files.append(file)
+        except:
+            nonexist_files.append(file)
+    return exist_files, nonexist_files
 
 
 def prepare_files(request):
-
-    # Default return values.
-    files = []
-    request['nonexist_files'] = []
-
-    # Cadence. By default there is one file per day.
-    key = 'cadence'
-    if not key in request:
-        request[key] = 'day'
-    cadence = request[key]
-
-    # time_range. By default is a pair of unix timestamps.
-    key = 'time_range'
-    if key not in request: request[key] = None
-    time_range = request[key]
-
-    # valid_range. By default is a pair of unix timestamps.
-    key = 'valid_range'
-    if key not in request: request[key] = None
-    valid_range = request[key]
-
-    # validated_time_range. By default is time_range.
-    validated_time_range = validate_time_range(time_range, valid_range)
+    """
+    Return files that are verified to exist on local disks for an input time range and file patterns or more complicated requests.
+    """
 
 
     # file_times. This is used to replace pattern to actual file names.
-    key = 'file_times'
-    if not key in request:
-        request[key] = None
-    if request[key] is None:
+    file_times = request.get('file_times', None)
+    if file_times is None:
         # Need to get file_times from time_range.
+
+        # Cadence. By default there is one file per day.
+        cadence = request.get('cadence', 'day')
+
+        # time_range. By default is a pair of unix timestamps.
+        time_range = prepare_time_range(request.get('time_range', None))
+
+        # valid_range. By default is a pair of unix timestamps.
+        valid_range = prepare_time_range(request.get('valid_range', None))
+
+        # validated_time_range. By default is time_range.
+        validated_time_range = validate_time_range(time_range, valid_range)
+
         file_times = break_down_times(validated_time_range, cadence)
-        request[key] = file_times
-    file_times = request[key]
-
-
-    # local_pattern. This is used to be replaced by file_times to get local_file.
-    key = 'local_pattern'
-    if not key in request:
-        request[key] = None
-
-    # remote_pattern. This is used to be replaced by file_times to get remote_file.
-    key = 'remote_pattern'
-    if not key in request:
-        request[key] = None
 
 
     # local_files. This is the main output we want.
-    key = 'local_files'
-    if not key in request:
-        request[key] = []
-    local_files = request[key]
+    local_files = request.get('local_files', [])
     if len(local_files) == 0:
-        local_pattern = request['local_pattern']
+        # local_pattern. This is used to be replaced by file_times to get local_file.
+        local_pattern = request.get('local_pattern', None)
         if not (local_pattern is None or file_times is None):
             local_files = time_string(file_times, fmt=local_pattern)
-            request[key] = local_files
-    
-    # remote_files. This is the optional info for syncing local_files.
-    key = 'remote_files'
-    if not key in request:
-        request[key] = []
-    remote_files = request[key]
-    if len(remote_files) == 0:
-        remote_pattern = request['remote_pattern']
-        if not (remote_pattern is None or file_times is None):
-            remote_files = time_string(file_times, fmt=remote_pattern)
-            request[key] = remote_files
 
 
     # Check if local files exist.
-    out_files = []
-    for local_file in local_files:
-        path = os.path.dirname(local_file)
-        base = os.path.basename(local_file)
-        files = []
-        for file in Path(path).glob(base):files.append(str(file))
-        if len(files) == 1:
-            out_files.append(files[0])
-        elif len(files) > 1:
-            files = sorted(files)
-            out_files.append(files[-1])
-    if len(out_files) == len(local_files):
-        request['local_files'] = out_files
-        return out_files
+    exist_files, nonexist_files = check_file_existence(local_files)
+    if len(nonexist_files) == 0:
+        request['files'] = exist_files
+        return exist_files
+
+    
+    # remote_files. This is the optional info for syncing local_files.
+    remote_files = request.get('remote_files', [])
+    if len(remote_files) == 0:
+        # remote_pattern. This is used to be replaced by file_times to get remote_file.
+        remote_pattern = request.get('remote_pattern', None)
+        if not (remote_pattern is None or file_times is None):
+            remote_files = time_string(file_times, fmt=remote_pattern)
 
 
     # Sync with the server.
-    out_files = []
+    downloaded_files = []
     for remote_file, local_file in zip(remote_files,local_files):
-        out_files.append(download_file(remote_file,local_file))
-    local_files = out_files
+        downloaded_files.append(download_file(remote_file,local_file))
 
     # Check if local files exist again.
-    out_files = []
-    nonexist_files = []
-    for local_file in local_files:
-        if os.path.exists(local_file):
-            out_files.append(local_file)
-        else:
-            nonexist_files.append(local_file)
-    if len(out_files) == 0:
-        request['local_files'] = out_files
+    exist_files, nonexist_files = check_file_existence(downloaded_files)
+    request['files'] = exist_files
+    if len(nonexist_files) != 0:
         request['nonexist_files'] = nonexist_files
-    return out_files
-
-# Return the root directory of the current script.
-def rootdir():
-    myname = sys.argv[0]
-    mypath = os.path.dirname(sys.argv[0])
-    return os.path.abspath(mypath)
-
-
-# Return the home directory of the current logged in user.
-def homedir():
-    return os.path.expanduser('~')
-
-
-# Return the directory of the given external disk.
-def diskdir(disk):
-    platform = sys.platform
-    
-    win = ['win32']
-    unix = ['linux2','cygwin','os2','os2emx','riscos','atheos']
-    mac = ['darwin']
-
-    if platform in mac:
-        dir = '/'.join(['','Volumes',disk])
-    elif platform in unix:
-        dir = '/'.join(['','media',disk])
-    elif platform in win:
-        dir = None
-# doesn't work so far.
-#        for letter in string.ascii_uppercase:
-#            drive[letter] = os.path.exists(letter+':')
-#        return '/'.join([letter,disk])
-    else:
-        dir = None
-    
-    return dir
-
-
-# return [user,hostname].
-def usrhost():
-    usr = getpass.getuser()
-    host = socket.gethostname()
-    return [usr,host]
+    return exist_files
 
 
 def read_var(var_request):
-    files = var_request['local_files']
+
+    files = var_request['files']
     in_vars = var_request['in_vars']
     vars = cdf_to_tplot(files, varnames=in_vars)
 
@@ -320,7 +203,5 @@ def read_var(var_request):
         for var, out_var in zip(vars,out_vars):
             tplot_rename(var, out_var)
     
+    if len(out_vars) == 1: out_vars = out_vars[0]
     return out_vars
-
-
-

@@ -1,5 +1,4 @@
 import os
-from ssl import VerifyFlags
 from .. import rbsp
 from .. import utils
 
@@ -45,13 +44,10 @@ def load_file(
     version='v*',
     file_times=None,
     local_data_dir=rbsp.local_data_root,
-    remote_data_dir=None,
+    remote_data_dir='https://cdaweb.gsfc.nasa.gov/pub/data/rbsp/',
 ):
 
     """ Take input time, probe, and id, then find and return the actual files."""
-
-    # Settings.
-    if remote_data_dir is None: remote_data_dir = 'https://cdaweb.gsfc.nasa.gov/pub/data/rbsp/'
 
     # Get the rbsp-general file request.
     rbspx = 'rbsp'+probe
@@ -62,10 +58,18 @@ def load_file(
     # A look up dictionary containing the info of remote and local data locations.
     file_infos = dict()
 
+    # Spice.
+    id = 'spice'
+    base_name = prefix+'spice_products_%Y%m%d_'+version+'.cdf'
+    file_infos[id] = {
+        'local_pattern': os.path.join(local_data_dir,rbspx,'spice_var','%Y',base_name),
+        'remote_pattern': os.path.join(remote_data_dir,rbspx,'ephemeris','efw-ephem','%Y',base_name),
+    }
+
 
     # L1 esvy.
     id = 'l1%esvy'
-    base_name = prefix+'_l1_esvy_%Y%m%d_'+version+'.cdf'
+    base_name = prefix+'l1_esvy_%Y%m%d_'+version+'.cdf'
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l1','esvy','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l1','efw','esvy','%Y',base_name),
