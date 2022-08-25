@@ -1,2 +1,2 @@
-import rbsp
-import omni
+from . import rbsp
+from . import omni

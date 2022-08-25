@@ -54,4 +54,4 @@ def convert_time(
     input=None,
     output=None,
 ):
-    return from_time(to_time(times, input), output)
+    return from_time(to_time(times, input.lower()), output.lower())

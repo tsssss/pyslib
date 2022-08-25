@@ -5,6 +5,7 @@ import numpy as np
 from spacepy import pycdf   # https://github.com/spacepy/spacepy/blob/master/spacepy/pycdf/
 from spacepy.pycdf import const
 import cdflib   # https://github.com/MAVENSDC/cdflib
+import libs.epoch as epoch
 
 """
 To achieve what my IDL cdf programs can do (https://github.com/tsssss/slib/tree/master/cdf).
@@ -105,7 +106,19 @@ class cdf():
                 raise Exception(f'Invalid range: {range} ...')
 
             data = self.pycdf[var][_range[0]:_range[1]:step]
-        return data[...]
+        data = data[...]
+        
+        # pycdf converts time to datetime.
+        # This is way too smart... 
+        var_info = self.read_var_info(var)
+        data_type = var_info['cdftype']
+        if data_type in ['CDF_EPOCH','CDF_EPOCH16','CDF_TT2000']:
+            data_type = data_type.lower()
+            data = epoch.convert_time(data, input='datetime', output=data_type)
+
+        return data
+
+
 
 
     def read_var_att(self, var=''):

@@ -1,6 +1,6 @@
-from pyslib import utils
-from pyslib import constant
-from ..mission.omni import omni
+from mission import omni
+import libs.system as system
+import constant
 
 # AE.
 def ae(
@@ -8,13 +8,13 @@ def ae(
 ):
 
 #    valid_range = omni.valid_range('ae')
-#    time_range = utils.validate_time_range(time_range, valid_range)
+#    time_range = system.validate_time_range(time_range, valid_range)
     var_request = {
         'local_files': omni.load_file(time_range),
         'in_vars': ['AE_INDEX'],
         'out_vars': ['omni_ae'],
     }
-    return utils.read_var(var_request)
+    return system.read_var(var_request)
 
 
 # Dst.
@@ -27,7 +27,7 @@ def dst(
         'in_vars': ['SYM_H'],
         'out_vars': ['omni_dst'],
     }
-    return utils.read_var(var_request)
+    return system.read_var(var_request)
 
 # Solar wind B.
 def sw_b(
@@ -40,4 +40,4 @@ def sw_b(
         'in_vars': ['BX_GSE','BY_GSM','BZ_GSM'],
         'out_vars': ['b'+x+'_gsm' for x in constant.xyz],
     }
-    vars = utils.read_var(var_request)
+    vars = system.read_var(var_request)

@@ -14,6 +14,8 @@ from libs.cdf import cdf as cdf
 import slib
 
 
+default_time_format = 'unix'
+
 
 # Return the root directory of the current script.
 def rootdir():
@@ -68,6 +70,7 @@ def get_extension(file):
 def prepare_time_range(input_time_range):
     if input_time_range is None: return None
     time_range = input_time_range.copy()
+    # TODO: Consider to use convert_time and default_time_format.
     if type(time_range[0]) is str: time_range = time_double(time_range)
     time_range = sorted(time_range)
     return time_range
@@ -244,6 +247,33 @@ def prepare_files(request):
         request['nonexist_files'] = nonexist_files
     return exist_files
 
+def _cdf_read_var(
+    var='',
+    files=[],
+    rec_range=None,
+    step=1,
+):
+
+    cdfid = cdf(files[0])
+    data_info = cdfid.read_var_info(var)
+    data_setting = cdfid.read_setting(var)
+    var_dim = data_info['dims']
+    dim = [0]
+    if len(var_dim) == 1 and var_dim[0] == 0:
+        pass
+    else:
+        dim.extend(var_dim)
+
+
+    # Read data.
+    data = np.empty(dim)
+    for range, file in zip(rec_range,files):
+        cdfid = cdf(file)
+        data = np.concatenate((data,cdfid.read_var(var, range, step)), axis=0)
+
+    return data, data_setting
+
+
 def cdf_read_var(
     var,
     files,
@@ -260,8 +290,6 @@ def cdf_read_var(
         tr = None
     else:
         tr = prepare_time_range(time_range)
-        if time_format is not None:
-            tr = epoch.convert_time(tr, input='unix', output=time_format)
     
     # Prepare files.
     if rec_range is None:
@@ -269,12 +297,17 @@ def cdf_read_var(
 
         # Use time to get range.
         if time_var is not None:
+            if time_format is None:
+                cdfid = cdf(files[0])
+                time_format = (cdfid.read_var_info(time_var))['cdftype']
+            tr = epoch.convert_time(tr, input=default_time_format, output=time_format)
             times = np.empty([0])
             for file in files:
                 cdfid = cdf(file)
                 # Read all times and trim to the given time range.
                 t = cdfid.read_var(time_var, step=step)
                 index = np.where(np.logical_and(t>=tr[0], t<=tr[1]))
+                if len(index) == 0: continue
                 range = [np.min(index),np.max(index)]
                 t = t[index]
                 # Avoid overlap in time.
@@ -282,10 +315,10 @@ def cdf_read_var(
                     if times[-1] == t[0]:
                         range[0] += 1
                         t = t[1:]
-                np.concatenate((times,t), axis=0)
+                times = np.concatenate((times,t), axis=0)
                 rec_range.append(range)
             if time_format is not None:
-                times = epoch.convert_time(times, input=time_format, output='unix')
+                times = epoch.convert_time(times, input=time_format, output=default_time_format)
         else:
             for file in files:
                 cdfid = cdf(file)
@@ -293,43 +326,35 @@ def cdf_read_var(
                 range = [0,var_info['maxrec']]
                 rec_range.append(range)
 
-
-    # Prepare var info.
-    good_file = files[0]
-    cdfid = cdf(good_file)
-    var_info = cdfid.read_var_info(var)
-    var_setting = cdfid.read_setting(var)
-    var_dim = var_info['dims']
-    dim = [0]
-    if len(var_dim) == 1 and var_dim[0] == 0:
-        pass
-    else:
-        dim.extend(var_dim)
-
-
-    # Read data.
-    data = np.empty(dim)
-    for range, file in zip(rec_range,files):
-        cdfid = cdf(file)
-        data = np.concatenate((data,cdfid.read_var(var, range, step)), axis=0)
-
-    # Save data.
-    slib.set_data(var, data, settings=var_setting)
+    # Read data and setting, store in memory.
+    data, data_setting = _cdf_read_var(var, files, rec_range=rec_range, step=step)
+    slib.set_data(var, data, settings=data_setting)
 
 
     # Read depend_var.
     if read_depend_var is True:
         depend_vars = list()
-        for key in var_setting:
+        for key in data_setting:
             if 'depend' not in key.lower(): continue
-            depend_var = var_setting[key]
-            depend_vars.append(depend_var)
-            if depend_var == time_var:
-                settings = cdfid.read_setting(time_var)
-                slib.set_data(time_var, times, settings)
-                slib.set_setting(var, {'time_var':time_var})
+            # Get the depend_var, data, and setting.
+            depend_var = data_setting[key]
+            data, data_setting = _cdf_read_var(depend_var, files, rec_range, step=step)
+            # Need to avoid overwriting existing var.
+            while slib.has_var(depend_var):
+                # No need to update the depend_var.
+                if np.array_equal(data, slib.get_data(depend_var)):
+#                if data == slib.get_data(depend_var):
+                    break
+                else:
+                    # Change to a different name and try again.
+                    depend_var += '_'
             else:
-                cdf_read_var(depend_var, files, rec_range, read_depend_var=False)
+                # If depend_var does not exist, then save the data and setting.
+                slib.set_data(depend_var, data, settings=data_setting)
+            depend_vars.append(depend_var)
+
+            if depend_var == time_var:
+                slib.set_setting(var, {'time_var':time_var})
         slib.set_setting(var, {'depend_vars':depend_vars})
 
 

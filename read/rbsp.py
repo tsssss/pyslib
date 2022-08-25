@@ -1,8 +1,7 @@
 from mission import rbsp
-import pyspedas
-import pytplot
+import libs.system as system
 from libs import vector
-from pyslib import utils
+import pytplot
 
 
 # Orbit.
@@ -18,7 +17,7 @@ def orbit(
     prefix = 'rbsp'+probe+'_'
     r_coord_var = prefix+'r_'+coord
     if coord != 'gse':
-        pyspedas.cotrans(r_gse_var, r_coord_var, coord_in='gse', coord_out=coord)
+        system.cotran(r_gse_var, r_coord_var, coord_in='gse', coord_out=coord)
 
     return r_coord_var
 
@@ -60,7 +59,7 @@ def _orbit(
         'time_var': 'Epoch',
         'step': step,
     }
-    return utils.read_var(var_request)
+    return system.read_var(var_request)
 
 
 
@@ -81,7 +80,7 @@ def q_uvw2gse(
         'files': files,
         'in_vars': [q_var],
     }
-    return utils.read_var(var_request)
+    return system.read_var(var_request)
 
 
 
@@ -102,5 +101,5 @@ def hope_omni_flux(
         'in_vars': [the_var.upper()],
         'out_vars': [prefix+'hope_'+the_var],
     }
-    return utils.read_var(var_request)
+    return system.read_var(var_request)
 

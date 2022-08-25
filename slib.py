@@ -22,12 +22,20 @@ def get_setting(var, key=None):
     else: return settings.get(key, None)
 
 def get_time(var):
-    time_var = data_quants[var].attrs.get('time_var', None)
-    return get_data(time_var)
+    return get_data(get_time_var(var))
+
+def get_time_var(var):
+    return data_quants[var].attrs.get('time_var', None)
+
+def get_depend_vars(var):
+    return data_quants[var].attrs.get('depend_vars', None)
 
 def rename(var, out_var=None):
     if out_var is None: return
     data_quants[out_var] = data_quants.pop(var)
+
+def has_var(var):
+    return var in data_quants.keys()
 
 def save(var, filename=None):
     if filename is None: return
