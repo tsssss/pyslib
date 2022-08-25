@@ -1,10 +1,8 @@
 import os
 import libs.system as system
-import mission.utils as utils
 
 # Default settings.
-local_data_root = os.path.join(system.diskdir('data'),'rbsp')
-if not os.path.exists(local_data_root): local_data_root = os.path.join(system.homedir(),'data','rbsp')
+local_data_root = os.path.join(system.local_data_root(),'rbsp')
 assert os.path.exists(local_data_root), f'{local_data_root} does not exist ...'
 assert os.path.isdir(local_data_root), f'{local_data_root} is not a directory ...'
 
@@ -25,9 +23,9 @@ def file_request(
     assert probe in all_probes, f'Invalid probe: {probe} ...'
 
     file_request = dict()
-    file_request['time_range'] = utils.prepare_time_range(input_time_range)
+    file_request['time_range'] = system.prepare_time_range(input_time_range)
     file_request['probe'] = probe
-    file_request['valid_range'] = utils.prepare_time_range(valid_range[probe])
+    file_request['valid_range'] = system.prepare_time_range(valid_range[probe])
 
     return file_request
 
@@ -35,5 +33,4 @@ def file_request(
 
 from . import hope
 from . import efw
-from . import read
 from . import ssc

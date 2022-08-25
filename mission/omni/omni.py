@@ -1,8 +1,7 @@
-from datetime import datetime
-from posixpath import basename
-from .. import omni
 import os
-from .. import utils
+from mission import omni
+import libs.system as system
+from datetime import datetime
 
 
 def valid_range(id, probe=None):
@@ -47,9 +46,9 @@ def load_file(
     id = 'cdaweb%hourly'
     base_name = 'omni2_h0_mrg1hr_%Y%m01_'+version+'.cdf'
     file_infos[id] = {
-        'local_pattern': os.path.join(local_data_dir,'hourly','%Y',basename),
-        'remote_pattern': os.path.join(remote_data_dir,'hourly','%Y',basename),
-        'valid_range': utils.prepare_time_range(valid_range(id)),
+        'local_pattern': os.path.join(local_data_dir,'hourly','%Y',base_name),
+        'remote_pattern': os.path.join(remote_data_dir,'hourly','%Y',base_name),
+        'valid_range': system.prepare_time_range(valid_range(id)),
     }
 
     # hro.
@@ -58,7 +57,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,'hro_'+resolution,'%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,'hro_'+resolution,'%Y',base_name),
-        'valid_range': utils.prepare_time_range(valid_range(id)),
+        'valid_range': system.prepare_time_range(valid_range(id)),
     }
 
     # hro2.
@@ -68,7 +67,7 @@ def load_file(
         'local_pattern': os.path.join(local_data_dir,'hro2_'+resolution,'%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,'hro2_'+resolution,'%Y',base_name),
         'cadence': 'month',
-        'valid_range': utils.prepare_time_range(valid_range(id)),
+        'valid_range': system.prepare_time_range(valid_range(id)),
     }
 
 
@@ -78,5 +77,5 @@ def load_file(
     for key in file_info:
         file_request[key] = file_info[key]
 
-    files = utils.prepare_files(file_request) 
+    files = system.prepare_files(file_request) 
     return files

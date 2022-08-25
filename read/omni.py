@@ -1,6 +1,6 @@
-from pyslib.mission import utils
+from pyslib import utils
 from pyslib import constant
-from . import omni
+from ..mission.omni import omni
 
 # AE.
 def ae(

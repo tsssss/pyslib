@@ -1,18 +1,19 @@
-import imp
-from mission import rbsp, utils
+from mission import rbsp
 import pyspedas
 import pytplot
 from libs import vector
+from pyslib import utils
 
 
 # Orbit.
 def orbit(
     time_range,
     probe,
+    resolution,
     coord='gsm',
 ):
 
-    r_gse_var = _orbit(time_range, probe, vars='r_gse')
+    r_gse_var = _orbit(time_range, probe, vars='r_gse', resolution=resolution)
     coord = coord.lower()
     prefix = 'rbsp'+probe+'_'
     r_coord_var = prefix+'r_'+coord
@@ -21,17 +22,17 @@ def orbit(
 
     return r_coord_var
 
-def mlt(time_range, probe,):
-    return _orbit(time_range, probe, vars='mlt')
+def mlt(time_range, probe, resolution):
+    return _orbit(time_range, probe, vars='mlt', resolution=resolution)
 
-def lshell(time_range, probe,):
-    return _orbit(time_range, probe, vars='lshell')
+def lshell(time_range, probe, resolution):
+    return _orbit(time_range, probe, vars='lshell', resolution=resolution)
 
-def mlat(time_range, probe,):
-    return _orbit(time_range, probe, vars='mlat')
+def mlat(time_range, probe, resolution):
+    return _orbit(time_range, probe, vars='mlat', resolution=resolution)
 
-def dis(time_range, probe,):
-    r_gse_var = _orbit(time_range, probe, vars='r_gse')
+def dis(time_range, probe, resolution):
+    r_gse_var = _orbit(time_range, probe, vars='r_gse', resolution=resolution)
     time, r_gse = pytplot.get_data(r_gse_var)
     prefix = 'rbsp'+probe+'_'
     dis_var = prefix+'dis'
@@ -43,15 +44,21 @@ def _orbit(
     time_range,
     probe,
     vars=None,
+    resolution=60,
 ):
 
     assert probe in ['a','b']
     id = 'cleaned_orbit'
+    native_resolution = 1
+    step = int(resolution/native_resolution)
     files = rbsp.ssc.load_file(time_range, probe, id)
     prefix = 'rbsp'+probe+'_'
     var_request = {
         'files': files,
         'in_vars': [prefix+vars],
+        'time_range': time_range,
+        'time_var': 'Epoch',
+        'step': step,
     }
     return utils.read_var(var_request)
 

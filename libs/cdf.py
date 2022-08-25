@@ -13,6 +13,26 @@ Now I use pycdf (https://github.com/spacepy/spacepy/tree/master/spacepy/pycdf). 
 The ideal solution is still use the route of cdflib, i.e., to avoid installing the CDF libarary separately.
 """
 
+valid_cdftype = dict([
+    (1, 'CDF_INT1'),
+    (2, 'CDF_INT2'),
+    (4, 'CDF_INT4'),
+    (8, 'CDF_INT8'),
+    (11, 'CDF_UINT1'),
+    (12, 'CDF_UINT2'),
+    (14, 'CDF_UINT4'),
+    (21, 'CDF_REAL4'),
+    (22, 'CDF_REAL8'),
+    (31, 'CDF_EPOCH'),
+    (32, 'CDF_EPOCH16'),
+    (33, 'CDF_TIME_TT2000'),
+    (41, 'CDF_BYTE'),
+    (44, 'CDF_FLOAT'),
+    (45, 'CDF_DOUBLE'),
+    (51, 'CDF_CHAR'),
+    (52, 'CDF_UCHAR'),
+])
+
 
 class cdf():
     filename = None
@@ -60,7 +80,7 @@ class cdf():
         dim_order = np.roll(np.flip(np.arange(len(dim))),1)
         return np.transpose(data, dim_order)
 
-    def read_var(self, var='', range=[]):
+    def read_var(self, var='', range=[], step=1):
         if not self.has_var(var):
             raise Exception(f'{var} is not found ...')
         # The IDL version has a functionality to shrink unnecessary dimensions.
@@ -84,7 +104,7 @@ class cdf():
             if _range[1] < _range[0]:
                 raise Exception(f'Invalid range: {range} ...')
 
-            data = self.pycdf[var][_range[0]:_range[1]]
+            data = self.pycdf[var][_range[0]:_range[1]:step]
         return data[...]
 
 
@@ -92,6 +112,28 @@ class cdf():
         if not self.has_var(var):
             raise Exception(f'{var} is not found ...')
         return dict(self.pycdf[var].attrs)
+
+    def read_var_info(self, var=''):
+        if not self.has_var(var):
+            raise Exception(f'{var} is not found ...')
+
+        the_cdf = cdflib.CDF(self.filename)
+        var_info = the_cdf.varinq(var)
+        dimvary = var_info['Dim_Vary']
+        dimvary = [int(x != 0) for x in dimvary]
+        
+        return {
+            'name': var_info['Variable'],
+            'cdftype': valid_cdftype[var_info['Data_Type']],
+            'nelem': var_info['Num_Elements'],
+            'iszvar': True,
+            'recvary': var_info['Rec_Vary'],
+            'maxrec': var_info['Last_Rec'],
+            'dims': var_info['Dim_Sizes'],
+            'dimvary': dimvary,
+        }
+        
+
 
     def del_var(self, var=''):
         if not self.has_var(var):
@@ -298,56 +340,15 @@ class cdf():
         skeleton['setting'] = self.read_setting()
 
         # Variables.
-        valid_cdftype = dict([
-            (1, 'CDF_INT1'),
-            (2, 'CDF_INT2'),
-            (4, 'CDF_INT4'),
-            (8, 'CDF_INT8'),
-            (11, 'CDF_UINT1'),
-            (12, 'CDF_UINT2'),
-            (14, 'CDF_UINT4'),
-            (21, 'CDF_REAL4'),
-            (22, 'CDF_REAL8'),
-            (31, 'CDF_EPOCH'),
-            (32, 'CDF_EPOCH16'),
-            (33, 'CDF_TIME_TT2000'),
-            (41, 'CDF_BYTE'),
-            (44, 'CDF_FLOAT'),
-            (45, 'CDF_DOUBLE'),
-            (51, 'CDF_CHAR'),
-            (52, 'CDF_UCHAR'),
-        ])
         vars = dict()
 
         # This part is not well tested.
         for var in cdf_info['rVariables']:
-            var_info = the_cdf.vdr_info(var)
-            vars[var] = {
-                'name': var_info['name'],
-                'cdftype': valid_cdftype[var_info['data_type']],
-                'nelem': var_info['num_elements'],
-                'iszvar': False,
-                'recvary': var_info['record_vary'],
-                'maxrec': var_info['max_records'],
-                'dims': cdf_info['rDim_sizes'],
-                'dimvary': var_info['dim_vary'],
-            }
+            vars[var] = self.read_var_info(var)
             vars[var]['setting'] = the_cdf.varattsget(var)
 
         for var in cdf_info['zVariables']:
-            var_info = the_cdf.vdr_info(var)
-            dimvary = var_info['dim_vary']
-            dimvary = [int(x != 0) for x in dimvary]
-            vars[var] = {
-                'name': var_info['name'],
-                'cdftype': valid_cdftype[var_info['data_type']],
-                'nelem': var_info['num_elements'],
-                'iszvar': True,
-                'recvary': var_info['record_vary'],
-                'maxrec': var_info['max_records'],
-                'dims': var_info['dim_sizes'],
-                'dimvary': dimvary,
-            }
+            vars[var] = self.read_var_info(var)
             vars[var]['setting'] = the_cdf.varattsget(var)
         skeleton['vars'] = vars
 
