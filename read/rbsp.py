@@ -2,6 +2,7 @@ from mission import rbsp
 import libs.system as system
 from libs import vector
 import pytplot
+import slib.manager as sm
 
 
 # Orbit.
@@ -59,7 +60,7 @@ def _orbit(
         'time_var': 'Epoch',
         'step': step,
     }
-    return system.read_var(var_request)
+    return sm.read_var(var_request)
 
 
 
@@ -101,5 +102,5 @@ def hope_omni_flux(
         'in_vars': [the_var.upper()],
         'out_vars': [prefix+'hope_'+the_var],
     }
-    return system.read_var(var_request)
+    return sm.read_var(var_request)
 

@@ -1,7 +1,7 @@
 import constant
 import pytplot
 import mission
-import slib
+import slib.manager as sm
 import read
 from astropy.time import Time
 
@@ -21,11 +21,11 @@ def main():
         r_vars.append(read.rbsp.orbit(time_range, probe, coord='gse', resolution=resolution))
 
     r_var = r_vars[0]
-    data = slib.get_data(r_var)
-    time = slib.get_time(r_var)
-    settings = slib.get_setting(r_var)
-    value = slib.get_setting(r_var, key='UNITS')
-    time_var = slib.get_time_var(r_var)
+    data = sm.get_data(r_var)
+    time = sm.get_time(r_var)
+    settings = sm.get_setting(r_var)
+    value = sm.get_setting(r_var, key='UNITS')
+    time_var = sm.get_time_var(r_var)
     pytplot.tplot_names()
 
 

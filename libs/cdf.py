@@ -488,38 +488,39 @@ class cdf():
                 print(s)
 
 
-# Test shows that both pycdf and cdflib start to use a lot of memory when loading variables.
-# pycdf takes about half the time of cdflib to load several GB of data.
-
-import time
-
-def test_cdf():
-    file = '/Users/shengtian/rbspa_efw_l2_spec_20180927_v02.cdf'
-    file = '/Users/shengtian/rbspa_l1_vb1_20140802_v02.cdf'
-#    with open(file, 'w+b'):
-#        print(f'{file} opened ...')
-
-    cdfid = cdf(file)
-    print(cdfid.vatts())
-    cdfid.print_skeleton()
-
-    test_vars = ['epoch','vb1']
-
-    cdfid = cdf(file)
-    for var in test_vars:
-        tic = time.perf_counter()
-        data = cdfid.read_var(var, step=1000000)
-        toc = time.perf_counter()
-        print(f'{toc-tic:0.4f} seconds for loading {var}')
-        print(data.shape)
-
-    cdfid = cdflib.CDF(file)
-    cdf_info = cdfid.cdf_info()
-    for var in test_vars:
-        tic = time.perf_counter()
-        data = cdfid.varget(var)
-        toc = time.perf_counter()
-        print(f'{toc-tic:0.4f} seconds for loading {var}')
-
-
-test_cdf()
+## Test shows that both pycdf and cdflib start to use a lot of memory when loading variables.
+## pycdf takes about half the time of cdflib to load several GB of data.
+#
+#import time
+#
+#def test_cdf():
+#    file = '/Users/shengtian/rbspa_efw_l2_spec_20180927_v02.cdf'
+#    file = '/Users/shengtian/rbspa_l1_vb1_20140802_v02.cdf'
+##    with open(file, 'w+b'):
+##        print(f'{file} opened ...')
+#
+#    cdfid = cdf(file)
+#    print(cdfid.vatts())
+#    cdfid.print_skeleton()
+#
+#    test_vars = ['epoch','vb1']
+#
+#    cdfid = cdf(file)
+#    for var in test_vars:
+#        tic = time.perf_counter()
+#        data = cdfid.read_var(var, step=1000000)
+#        toc = time.perf_counter()
+#        print(f'{toc-tic:0.4f} seconds for loading {var}')
+#        print(data.shape)
+#
+#    cdfid = cdflib.CDF(file)
+#    cdf_info = cdfid.cdf_info()
+#    for var in test_vars:
+#        tic = time.perf_counter()
+#        data = cdfid.varget(var)
+#        toc = time.perf_counter()
+#        print(f'{toc-tic:0.4f} seconds for loading {var}')
+#
+#
+#if __name__ == '__main__':
+#    test_cdf()

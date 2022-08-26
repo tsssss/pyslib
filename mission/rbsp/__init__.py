@@ -1,5 +1,6 @@
 import os
 import libs.system as system
+import slib.manager as sm
 
 # Default settings.
 local_data_root = os.path.join(system.local_data_root(),'rbsp')
@@ -23,9 +24,9 @@ def file_request(
     assert probe in all_probes, f'Invalid probe: {probe} ...'
 
     file_request = dict()
-    file_request['time_range'] = system.prepare_time_range(input_time_range)
+    file_request['time_range'] = sm.prepare_time_range(input_time_range)
     file_request['probe'] = probe
-    file_request['valid_range'] = system.prepare_time_range(valid_range[probe])
+    file_request['valid_range'] = sm.prepare_time_range(valid_range[probe])
 
     return file_request
 
