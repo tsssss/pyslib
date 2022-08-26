@@ -8,9 +8,11 @@ import cdflib   # https://github.com/MAVENSDC/cdflib
 
 """
 To achieve what my IDL cdf programs can do (https://github.com/tsssss/slib/tree/master/cdf).
-Originally I use cdflib (https://github.com/MAVENSDC/cdflib), but it doesn't allow read and write at the same time.
-Now I use pycdf (https://github.com/spacepy/spacepy/tree/master/spacepy/pycdf). It needs to manually install the CDF library (https://spdf.gsfc.nasa.gov/pub/software/cdf/)
-The ideal solution is still use the route of cdflib, i.e., to avoid installing the CDF libarary separately.
+
+Originally I use cdflib, but it doesn't allow read and write at the same time.
+Now I use both cdflib and pycdf. It needs to manually install the CDF library (https://spdf.gsfc.nasa.gov/pub/software/cdf/)
+
+The ideal solution is still use the route of cdflib, i.e., to avoid installing the CDF libarary separately. However, I do noticed that cdflib took twice the time of pycdf to load several GB of data.
 """
 
 valid_cdf_type = {
