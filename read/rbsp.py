@@ -1,8 +1,7 @@
 from mission import rbsp
-import libs.system as system
 from libs import vector
 import pytplot
-import slib.manager as sm
+import slib.manager as smg
 
 
 # Orbit.
@@ -15,10 +14,18 @@ def orbit(
 
     r_gse_var = _orbit(time_range, probe, vars='r_gse', resolution=resolution)
     coord = coord.lower()
+    settings = {
+        'display_type': 'vector',
+        'coord': 'gse',
+        'short_name': 'R',
+        'coord_labels': list('xyz'),
+    }
+    smg.set_setting(r_gse_var, settings)
+
     prefix = 'rbsp'+probe+'_'
     r_coord_var = prefix+'r_'+coord
     if coord != 'gse':
-        system.cotran(r_gse_var, r_coord_var, coord_in='gse', coord_out=coord)
+        smg.cotran(r_gse_var, r_coord_var, coord_in='gse', coord_out=coord)
 
     return r_coord_var
 
@@ -60,7 +67,7 @@ def _orbit(
         'time_var': 'Epoch',
         'step': step,
     }
-    return sm.read_var(var_request)
+    return smg.read_var(var_request)
 
 
 
@@ -81,7 +88,7 @@ def q_uvw2gse(
         'files': files,
         'in_vars': [q_var],
     }
-    return system.read_var(var_request)
+    return smg.read_var(var_request)
 
 
 
@@ -102,5 +109,5 @@ def hope_omni_flux(
         'in_vars': [the_var.upper()],
         'out_vars': [prefix+'hope_'+the_var],
     }
-    return sm.read_var(var_request)
+    return smg.read_var(var_request)
 

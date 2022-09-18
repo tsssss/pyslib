@@ -175,7 +175,7 @@ class cdf():
         # Read data.
         data_type = var_info['cdf_type']
         if data_type in ['CDF_EPOCH','CDF_EPOCH16','CDF_TT2000']:
-            data = self._cdflib.varget(var, startrec=_range[0], endrec=_range[1])
+            data = self._cdflib.varget(var, startrec=_range[0], endrec=_range[1]-1)
             return data[::step]
         else:
             data = self._pycdf[var][_range[0]:_range[1]:step]

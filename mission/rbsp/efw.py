@@ -1,7 +1,6 @@
 import os
 from mission import rbsp
-import libs.system as system
-import slib.manager as sm
+import slib.manager as smg
 
 
 def valid_range(id, probe=None):
@@ -75,7 +74,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l1','esvy','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l1','efw','esvy','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range(id, probe)),
+        'valid_range': smg.prepare_time_range(valid_range(id, probe)),
     }
 
     # L1 vb1-split.
@@ -167,7 +166,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l2','e-highres-uvw','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l2','efw','e-highres-uvw','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range(id, probe)),
+        'valid_range': smg.prepare_time_range(valid_range(id, probe)),
     }
 
     # L2 esvy_despun.
@@ -176,7 +175,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l2','esvy_despun','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l2','efw','esvy_despun','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range(id, probe)),
+        'valid_range': smg.prepare_time_range(valid_range(id, probe)),
     }
 
     # L2 vsvy_hires.
@@ -185,7 +184,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l2','vsvy-highres','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l2','efw','vsvy-highres','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range(id, probe)),
+        'valid_range': smg.prepare_time_range(valid_range(id, probe)),
     }
 
     # L2 spec.
@@ -194,7 +193,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l2','spec','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l2','efw','spec','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range(id, probe)),
+        'valid_range': smg.prepare_time_range(valid_range(id, probe)),
     }
 
     # L2 fbk.
@@ -203,7 +202,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l2','fbk','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l2','efw','fbk','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range(id, probe)),
+        'valid_range': smg.prepare_time_range(valid_range(id, probe)),
     }
 
     # L2 e_spinfit_mgse.
@@ -212,7 +211,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l2','e_spinfit_mgse','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l2','efw','e_spinfit_mgse','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range('e_spinfit', probe)),
+        'valid_range': smg.prepare_time_range(valid_range('e_spinfit', probe)),
     }
 
     # L3.
@@ -221,7 +220,7 @@ def load_file(
     file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,rbspx,'efw','l3','%Y',base_name),
         'remote_pattern': os.path.join(remote_data_dir,rbspx,'l3','efw','%Y',base_name),
-        'valid_range': sm.prepare_time_range(valid_range('e_spinfit', probe)),
+        'valid_range': smg.prepare_time_range(valid_range('e_spinfit', probe)),
     }
 
 
@@ -231,5 +230,5 @@ def load_file(
     for key in file_info:
         file_request[key] = file_info[key]
 
-    files = system.prepare_files(file_request) 
+    files = smg.prepare_files(file_request) 
     return files

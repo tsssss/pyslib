@@ -1,5 +1,7 @@
 from astropy.time import Time
 from astropy.time.formats import TimeFromEpoch, erfa
+from pyspedas.utilities.time_string import time_string
+from pyspedas.utilities.time_double import time_double
 
 # To convert between epoch, epoch16, tt2000, unixtime, and other time formats.
 # Related references are:
@@ -22,30 +24,38 @@ def to_time(times, message):
     'sdt_unix' or 'sdt' is used for reading data exported from SDT.
     """
 
-    if message == 'time': return times
-    if message in ['epoch','epoch16','tt2000']:
-        msg = 'cdf_'+message
-    elif message == 'sdt':
+    msg = message.lower()
+    if msg == 'time': return times
+    if msg in ['epoch','epoch16','tt2000']:
+        msg = 'cdf_'+msg
+    elif msg == 'sdt':
         msg = 'sdt_unix'
-    else:
-        msg = message
-    _times = Time(times, format=msg)
+
+    try:
+        _times = Time(times, format=msg)
+    except:
+        # To handle other string formats.
+        _times = Time(time_double(times, fmt=message), format='unix')
 
     return _times
         
 
 def from_time(times, message):
 
-    if message == 'time': return times
-    if message in ['epoch','epoch16','tt2000']:
-        msg = 'cdf_'+message
-    elif message == 'sdt':
+    msg = message.lower()
+    if msg == 'time': return times
+    if msg in ['epoch','epoch16','tt2000']:
+        msg = 'cdf_'+msg
+    elif msg == 'sdt':
         msg = 'sdt_unix'
-    else:
-        msg = message
-    times.format = msg
     
-    return times.value
+    try:
+        times.format = msg
+        return times.value
+    except:
+        times.format = 'unix'
+        return time_string(times.value, fmt=message)
+        
 
     
 
@@ -54,4 +64,4 @@ def convert_time(
     input=None,
     output=None,
 ):
-    return from_time(to_time(times, input.lower()), output.lower())
+    return from_time(to_time(times, input), output)

@@ -1,9 +1,8 @@
 import os
-import libs.system as system
-import slib.manager as sm
+import slib.manager as smg
 
 # Default settings.
-local_data_root = os.path.join(system.local_data_root(),'rbsp')
+local_data_root = os.path.join(smg.local_data_root(),'rbsp')
 assert os.path.exists(local_data_root), f'{local_data_root} does not exist ...'
 assert os.path.isdir(local_data_root), f'{local_data_root} is not a directory ...'
 
@@ -24,9 +23,9 @@ def file_request(
     assert probe in all_probes, f'Invalid probe: {probe} ...'
 
     file_request = dict()
-    file_request['time_range'] = sm.prepare_time_range(input_time_range)
+    file_request['time_range'] = smg.prepare_time_range(input_time_range)
     file_request['probe'] = probe
-    file_request['valid_range'] = sm.prepare_time_range(valid_range[probe])
+    file_request['valid_range'] = smg.prepare_time_range(valid_range[probe])
 
     return file_request
 

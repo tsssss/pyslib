@@ -9,7 +9,9 @@ from pyspedas.utilities.time_string import time_string
 from pyspedas.utilities.time_double import time_double
 import constant
 import libs.math as math
-# import libs.system as system
+from pathlib import Path
+import libs.system as system
+from libs.cotran import cotran as lib_cotran
 
 
 
@@ -52,7 +54,8 @@ def save(var, filename=None):
     if filename is None: return
 
 
-def merge(in_vars, output=None, time_var=None):
+def merge(in_vars, output=None, time_var=None, settings=None):
+
     if output is None:
         return None
     
@@ -74,7 +77,9 @@ def merge(in_vars, output=None, time_var=None):
             data = np.array(data)
     
     if len(data) == 0: return
-    settings = get_setting(in_vars[0])
+    if settings is None:
+        settings = get_setting(in_vars[0])
+        settings['display'] = 'vector'
     set_data(output, data, settings)
 
 
@@ -134,24 +139,22 @@ def cdf_read_var(
                 cdfid = cdf(files[0])
                 time_format = (cdfid.read_var_info(time_var))['cdf_type']
             tr = epoch.convert_time(tr, input=default_time_format, output=time_format)
-            times = np.empty([0])
+            pre_times = None
             for file in files:
                 cdfid = cdf(file)
                 # Read all times and trim to the given time range.
-                t = cdfid.read_var(time_var, step=step)
-                index = np.where(np.logical_and(t>=tr[0], t<=tr[1]))
+                t = cdfid.read_var(time_var)
+                index = (np.where(np.logical_and(t>=tr[0], t<=tr[1])))[0]
                 if len(index) == 0: continue
                 range = [np.min(index),np.max(index)]
                 t = t[index]
                 # Avoid overlap in time.
-                if len(times)>0 :
-                    if times[-1] == t[0]:
-                        range[0] += 1
-                        t = t[1:]
-                times = np.concatenate((times,t), axis=0)
+                if pre_times is not None:
+                    index = (np.where(t>pre_times[-1]))[0]
+                    range[0] += index[0]
+                    t = t[index[0]:]
+                pre_times = t
                 rec_range.append(range)
-            if time_format is not None:
-                times = epoch.convert_time(times, input=time_format, output=default_time_format)
         else:
             for file in files:
                 cdfid = cdf(file)
@@ -172,6 +175,8 @@ def cdf_read_var(
             # Get the depend_var, data, and setting.
             depend_var = data_setting[key]
             data, data_setting = _cdf_read_var(depend_var, files, rec_range, step=step)
+            if depend_var == time_var:
+                data = epoch.convert_time(data, input=time_format, output=default_time_format)
             # Need to avoid overwriting existing var.
             while has_var(depend_var):
                 # No need to update the depend_var.
@@ -215,6 +220,95 @@ def read_var(var_request):
     
     if len(out_vars) == 1: out_vars = out_vars[0]
     return out_vars
+
+
+def check_file_existence(files):
+    exist_files = []
+    nonexist_files = []
+    for file in files:
+        path = os.path.dirname(file)
+        base = os.path.basename(file)
+        f = [str(file) for file in Path(path).glob(base)]
+        try:
+            file = (sorted(f))[-1]
+            exist_files.append(file)
+        except:
+            nonexist_files.append(file)
+    return exist_files, nonexist_files
+
+
+
+def prepare_files(request):
+    """
+    Return files that are verified to exist on local disks for an input time range and file patterns or more complicated requests.
+    """
+
+
+    # file_times. This is used to replace pattern to actual file names.
+    file_times = request.get('file_times', None)
+    if file_times is None:
+        # Need to get file_times from time_range.
+
+        # Cadence. By default there is one file per day.
+        cadence = request.get('cadence', 'day')
+
+        # time_range. By default is a pair of unix timestamps.
+        time_range = prepare_time_range(request.get('time_range', None))
+
+        # valid_range. By default is a pair of unix timestamps.
+        valid_range = prepare_time_range(request.get('valid_range', None))
+
+        # validated_time_range. By default is time_range.
+        validated_time_range = validate_time_range(time_range, valid_range)
+
+        file_times = break_down_times(validated_time_range, cadence)
+
+
+    # local_files. This is the main output we want.
+    local_files = request.get('local_files', [])
+    if len(local_files) == 0:
+        # local_pattern. This is used to be replaced by file_times to get local_file.
+        local_pattern = request.get('local_pattern', None)
+        if not (local_pattern is None or file_times is None):
+            local_files = epoch.convert_time(file_times, input='unix', output=local_pattern)
+
+
+    # Check if local files exist.
+    exist_files, nonexist_files = check_file_existence(local_files)
+    if len(nonexist_files) == 0:
+        request['files'] = exist_files
+        return exist_files
+
+    
+    # remote_files. This is the optional info for syncing local_files.
+    remote_files = request.get('remote_files', [])
+    if len(remote_files) == 0:
+        # remote_pattern. This is used to be replaced by file_times to get remote_file.
+        remote_pattern = request.get('remote_pattern', None)
+        if not (remote_pattern is None or file_times is None):
+            remote_files = epoch.convert_time(file_times, input='unix', output=remote_pattern)
+
+
+    # Sync with the server.
+    downloaded_files = []
+    for remote_file, local_file in zip(remote_files,local_files):
+        downloaded_files.append(system.download_file(remote_file,local_file))
+
+    # Check if local files exist again.
+    exist_files, nonexist_files = check_file_existence(downloaded_files)
+    request['files'] = exist_files
+    if len(nonexist_files) != 0:
+        request['nonexist_files'] = nonexist_files
+    return exist_files
+
+
+
+
+def local_data_root():
+    local_data_root = system.diskdir('data')
+    if not os.path.exists(local_data_root):
+        local_data_root = os.path.join(system.homedir(),'data')
+    return local_data_root
 
 
 
@@ -303,3 +397,24 @@ def break_down_times(time, cadence='day'):
         times = time_double(math.sort_uniq(str_times))
 
     return times
+
+
+def cotran(in_var, out_var=None, coord_in=None, coord_out=None, probe=None):
+    
+    if coord_in is None:
+        coord_in = get_setting(in_var, 'coord')
+    if coord_out is None:
+        raise Exception('No output coord ..')
+    
+    vec_in = get_data(in_var)
+    times = get_time(in_var)
+    setting = get_setting(in_var)
+    setting['coord'] = coord_out
+
+    vec_out = lib_cotran(list(vec_in), list(times),
+        input=coord_in, output=coord_out, probe=probe)
+    
+    if out_var is None:
+        out_var = in_var.replace(coord_in, coord_out)
+    set_data(out_var, vec_out, settings=setting)
+
