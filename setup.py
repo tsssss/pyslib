@@ -17,7 +17,7 @@ setuptools.setup(
     platforms=['Mac OS'],
     license='MIT',
     packages=setuptools.find_packages(),
-    package_data={'':['*.py','*.md']},
+    package_data={'':['*.md']},
     classifiers= [
         'Programming Language :: Python :: 3',
         'Operating System :: MacOS',
