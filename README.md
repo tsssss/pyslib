@@ -1,5 +1,5 @@
 # pyslib
-My library `slib` written in python. The library is used to load, plot, process, and save data for space physics research.
+My library `pyslib` written in python. The library is used to load, plot, process, and save data for space physics research.
 
 NOTE: it's still under development.
 
@@ -29,7 +29,7 @@ Modules in the `mission` directory are simply the "drivers" for a certain missio
 ## Read data from the loaded files
 The `read` directory contains modules to read specific data from the data files loaded by the mission-based modules and to store the data in memory to be processed, plotted, and saved.
 
-The modules in the `read` directory play a central role in the `slib` package. The key idea here is that these modules handle the mission and instrument specific details and return physics variables that can be further processed uniformly.
+The modules in the `read` directory play a central role in the `pyslib` package. The key idea here is that these modules handle the mission and instrument specific details and return physics variables that can be further processed uniformly.
 
 For example, although GOES and THEMIS both measure the magnetic field, the data loading and calibration are mission and instrument specific. Ideally, we, the general users, do not need to know these details. We simply want to load magnetic field data for the related missions, with simple commands like
 ```
@@ -54,16 +54,16 @@ for var in bfield_vars:
 # Plot the data to a file.
 plot_file = '~/test_bfield.pdf'
 fig_size = (8,6)
-slib.open_plot(plot_file, fig_size=fig_size)
-slib.plot(bfield_vars)
-slib.close_plot()
+system.open_plot(plot_file, fig_size=fig_size)
+system.plot(bfield_vars)
+system.close_plot()
 
 # Save the data to a file.
 data_file = '~/test_bfield.cdf'
-slib.save(bfield_vars, data_file)
+system.save(bfield_vars, data_file)
 ```
 
-This is essentially what the `pyspedas` and `pytplot` allow us to do. But the `slib` package allows us to read and process the data more flexibily.
+This is essentially what the `pyspedas` and `pytplot` allow us to do. But the `pyslib` package allows us to read and process the data more flexibily.
 
 NOTE: this is a framework to be filled as need. Please join me to fill in the mission and instrument you are familiar with.
 
