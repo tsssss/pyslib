@@ -1,5 +1,5 @@
 import os
-import slib.manager as smg
+import system.manager as smg
 
 # Default settings.
 local_data_root = os.path.join(smg.local_data_root(),'rbsp')

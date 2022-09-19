@@ -7,7 +7,7 @@ import numpy as np
 import libs.epoch as epoch
 from pyspedas.utilities.time_string import time_string
 from pyspedas.utilities.time_double import time_double
-import constant
+import system.constant as constant
 import libs.math as math
 from pathlib import Path
 import libs.system as system

@@ -1,7 +1,7 @@
 from mission import rbsp
 from libs import vector
 import pytplot
-import slib.manager as smg
+import system.manager as smg
 
 
 # Orbit.

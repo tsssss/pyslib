@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import slib.manager as smg
-from slib.manager import data_quants
+import system.manager as smg
+from system.manager import data_quants
 import libs.math as math
-import constant
+import system.constant as constant
 
 plot_setting_key = 'plot_setting'
 default_plot_setting = {

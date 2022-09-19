@@ -1,5 +1,5 @@
 import os
-import slib.manager as smg
+import system.manager as smg
 import libs.system as system
 from datetime import datetime
 

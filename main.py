@@ -1,11 +1,6 @@
-import constant
 import pytplot
-import mission
-import slib.manager as smg
 import read
-from astropy.time import Time
-import slib.plot as spl
-import matplotlib as mpl
+import system.plot as spl
 
 
 def main():

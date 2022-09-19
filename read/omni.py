@@ -1,5 +1,5 @@
 from mission import omni
-import slib.manager as smg
+import system.manager as smg
 
 # AE.
 def ae(

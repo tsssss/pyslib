@@ -1,6 +1,6 @@
 import os
 from mission import rbsp
-import slib.manager as smg
+import system.manager as smg
 
 
 def valid_range(id, probe=None):
