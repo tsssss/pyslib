@@ -12,16 +12,19 @@ import libs.math as math
 from pathlib import Path
 import libs.system as system
 from libs.cotran import cotran as lib_cotran
-
+import libs.vector as vector
 
 
 # To store data in memory.
 data_quants = dict()
 
-def set_data(var, data, settings):
+def set_data(var, data, settings=None):
     data_quants[var] = xr.DataArray(data)
     data_quants[var].name = var
-    data_quants[var].attrs = settings
+    if settings is None:
+        data_quants[var].attr = {}
+    else:
+        set_setting(var, settings)
 
 def set_setting(var, settings):
     data_quants[var].attrs.update(settings)
@@ -52,6 +55,73 @@ def has_var(var):
 
 def save(var, filename=None):
     if filename is None: return
+
+def add(vars, output=None, time_var=None, settings=None):
+
+        if output is None:
+            return None
+
+        try:
+            data = get_data(vars[0])
+            for var in vars:
+                if var == vars[0]: continue
+                data += get_data(var)
+        except:
+            if time_var is None:
+                time_var = get_time_var(vars[0])
+            times = get_data(time_var)
+        
+            data = get_data(vars[0])
+            data = np.array(data.shape)
+            for var in vars:
+                if time_var != get_time_var(var):
+                    data += np.interp(times, get_time(var), get_data(var))
+                else:
+                    data += get_data(var)
+
+        set_data(output, data, settings=settings)
+        
+
+def magnitude(in_var, output=None):
+
+    settings = get_setting(in_var)
+    display_type = settings.get('display_type','')
+    if display_type != 'vector':
+        return None
+
+    data = vector.magnitude(get_data(in_var))
+    set_data(output, data, settings)
+    new_settings = {
+        'display_type': 'scalar',
+        'short_name': '|'+settings['short_name']+'|',
+    }
+    set_setting(output, new_settings)
+    return output
+
+
+def split(in_var, output=None):
+
+    settings = get_setting(in_var)
+    display_type = settings.get('display_type','')
+    if display_type != 'vector':
+        return None
+
+    coord_labels = settings['coord_labels']
+    if output is None:
+        output = [in_var+'_'+x for x in coord_labels]
+    
+    data = get_data(in_var)
+    ndim = len(coord_labels)
+    short_name = settings.get('short_name',in_var)
+    for i in range(ndim):
+        set_data(output[i], data[:,i], settings)
+        new_settings = {
+            'display_type': 'scalar',
+            'short_name': short_name+coord_labels[i],
+        }
+        set_setting(output[i], new_settings)
+
+    return output
 
 
 def merge(in_vars, output=None, time_var=None, settings=None):
@@ -95,6 +165,12 @@ def _cdf_read_var(
     cdfid = cdf(files[0])
     data_info = cdfid.read_var_info(var)
     data_setting = cdfid.read_setting(var)
+
+    rec_vary = data_info['rec_vary']
+    if not rec_vary:
+        data = cdfid.read_var(var)
+        return data, data_setting
+
     var_dim = data_info['dims']
     dim = [0]
     if len(var_dim) == 1 and var_dim[0] == 0:
@@ -128,6 +204,12 @@ def cdf_read_var(
         tr = None
     else:
         tr = prepare_time_range(time_range)
+    
+    if time_var is None:
+        cdfid = cdf(files[0])
+        var_setting = cdfid.read_setting(var)
+        time_var = var_setting.get('DEPEND_0', None)
+
     
     # Prepare files.
     if rec_range is None:
@@ -174,7 +256,7 @@ def cdf_read_var(
             if 'depend' not in key.lower(): continue
             # Get the depend_var, data, and setting.
             depend_var = data_setting[key]
-            data, data_setting = _cdf_read_var(depend_var, files, rec_range, step=step)
+            data, the_data_setting = _cdf_read_var(depend_var, files, rec_range, step=step)
             if depend_var == time_var:
                 data = epoch.convert_time(data, input=time_format, output=default_time_format)
             # Need to avoid overwriting existing var.
@@ -187,7 +269,7 @@ def cdf_read_var(
                     depend_var += '_'
             else:
                 # If depend_var does not exist, then save the data and setting.
-                set_data(depend_var, data, settings=data_setting)
+                set_data(depend_var, data, settings=the_data_setting)
             depend_vars.append(depend_var)
 
             if depend_var == time_var:

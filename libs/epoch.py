@@ -28,6 +28,8 @@ def to_time(times, message):
     if msg == 'time': return times
     if msg in ['epoch','epoch16','tt2000']:
         msg = 'cdf_'+msg
+    elif msg == 'cdf_double':
+        msg = 'unix'
     elif msg == 'sdt':
         msg = 'sdt_unix'
 
@@ -46,6 +48,8 @@ def from_time(times, message):
     if msg == 'time': return times
     if msg in ['epoch','epoch16','tt2000']:
         msg = 'cdf_'+msg
+    elif msg == 'cdf_double':
+        msg = 'unix'
     elif msg == 'sdt':
         msg = 'sdt_unix'
     

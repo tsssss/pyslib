@@ -157,6 +157,11 @@ class cdf():
         # This is way too smart... 
         var_info = self.read_var_info(var)
 
+        # If rec not vary.
+        if not var_info['rec_vary']:
+            return (self._pycdf[var])[...]
+            
+
         # Work on range.
         maxrec = var_info['maxrec']
         nrange = len(range)

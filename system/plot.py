@@ -87,9 +87,10 @@ def plot_scalar(var,
     var_settings = smg.get_setting(var)
 
     if ytitle is None:
-        unit = var_settings.get('UNITS', None)
+        unit = var_settings.get('unit', None)
+        if unit is None: unit = var_settings.get('UNITS', None)
         ytitle = make_title_from_unit(unit)
-    labels = var_settings['short_name']
+    labels = var_settings.get('short_name', '')
     colors = 'black'
 
     ax.plot(x,y, color=colors, label=labels)
@@ -118,6 +119,13 @@ def plot_scalar(var,
     ax.tick_params(axis='y', which='minor', left=True)
     ax.tick_params(axis='y', which='minor', right=True)
     ax.grid(linewidth=0.5, color='gray', alpha=0.25)
+
+    ylog = var_settings.get('ylog', False)
+    if ylog is True:
+        ax.set_yscale('log')
+    yrange = var_settings.get('yrange', None)
+    if yrange is not None:
+        ax.set_ylim(yrange)
 
     # Set xticks.
     if xrange is None: xrange = [min(x),max(x)+60]
@@ -150,8 +158,12 @@ def plot_vector(var,
     var_settings = smg.get_setting(var)
 
     if ytitle is None:
-        unit = var_settings.get('UNITS', None)
+        unit = var_settings.get('unit', None)
+        if unit is None: unit = var_settings.get('UNITS', None)
         ytitle = make_title_from_unit(unit)
+    yrange = var_settings.get('yrange', None)
+    if yrange is not None:
+        ax.set_ylim(yrange)
 
     colors = list('rgb')
     coord = var_settings['coord']
