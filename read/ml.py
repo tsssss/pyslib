@@ -1,6 +1,3 @@
-from email.policy import default
-from sys import prefix
-from threading import Timer
 import system.manager as smg
 import numpy as np
 import mission
@@ -141,6 +138,69 @@ def sw_v(time_range, coord='gse'):
     return coord_var
 
 
+def f107(time_range):
+    var = omni_var(time_range, 'f107')
+
+    settings = {
+        'display_type': 'scalar',
+        'short_name': 'F10.7',
+        'unit': '$10^{-22}$J/s-m${}^2$-Hz',
+    }
+    smg.set_setting(var, settings=settings)
+    return var
+
+def pc_index(time_range):
+    var = omni_var(time_range, 'pc_index')
+
+    settings = {
+        'display_type': 'scalar',
+        'short_name': 'PC index',
+        'unit': '#',
+    }
+    smg.set_setting(var, settings=settings)
+    return var
+
+
+def sw_t(time_range):
+    var = omni_var(time_range, 'sw_t')
+
+    settings = {
+        'display_type': 'scalar',
+        'short_name': 'SW T',
+        'unit': 'eV',
+        'ylog': True,
+    }
+    smg.set_setting(var, settings=settings)
+    return var
+
+
+def sw_n(time_range):
+    var = omni_var(time_range, 'sw_n')
+
+    settings = {
+        'display_type': 'scalar',
+        'short_name': 'SW N$_H$',
+        'unit': 'cm$^3$',
+        'ylog': True,
+    }
+    smg.set_setting(var, settings=settings)
+    return var
+
+
+def sw_p(time_range):
+    var = omni_var(time_range, 'sw_p')
+
+    settings = {
+        'display_type': 'scalar',
+        'short_name': 'SW P$_{dyn}$',
+        'unit': 'nPa',
+        'ylog': True,
+    }
+    smg.set_setting(var, settings=settings)
+    return var
+
+
+
 def omni_var(
     input_time_range,
     var=None,
@@ -161,6 +221,9 @@ def omni_var(
         'time_range': time_range,
     }
     return smg.read_var(var_request)
+
+
+
 
 def rbsp_mlt(
     time_range,
