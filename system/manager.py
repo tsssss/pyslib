@@ -26,6 +26,38 @@ def set_data(var, data, settings=None):
     else:
         set_setting(var, settings)
 
+    # More smart actions.
+    key = 'display_type'
+    if get_setting(var, key) is None:
+        dims = data.shape
+        if len(dims) == 2:
+            if dims[1] == 3:
+                display_type = 'vector'
+            else:
+                display_type = 'list'
+        elif len(dims) == 1:
+            display_type = 'scalar'
+        else:
+            display_type = None
+        if display_type is not None:
+            set_setting(var, {key: display_type})
+    
+    key = 'unit'
+    if get_setting(var, key) is None:
+        unit = get_setting(var, 'UNITS')
+        unit = unit.replace('!U', '$^{')
+        unit = unit.replace('!E', '$^{')
+        unit = unit.replace('!N', '}$')
+        set_setting(var, {key: unit})
+
+    key = 'time_var'
+    if get_setting(var, key) is None:
+        dep_vars = get_setting(var, 'depend_vars')
+        if len(dep_vars) >= 1:
+            time_var = dep_vars[0]
+            set_setting(var, {key: time_var})
+
+
 def set_setting(var, settings):
     data_quants[var].attrs.update(settings)
 
