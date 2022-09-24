@@ -1,5 +1,6 @@
 # from collections import OrderedDict
 import os
+from select import devpoll
 import xarray as xr
 import numpy as np
 from libs.cdf import cdf as cdf
@@ -53,7 +54,7 @@ def set_data(var, data, settings=None):
     key = 'time_var'
     if get_setting(var, key) is None:
         dep_vars = get_setting(var, 'depend_vars')
-        if len(dep_vars) >= 1:
+        if dep_vars is not None:
             time_var = dep_vars[0]
             set_setting(var, {key: time_var})
 
@@ -75,8 +76,24 @@ def get_time(var):
 def get_time_var(var):
     return data_quants[var].attrs.get('time_var', None)
 
+def set_time_var(var, time_var):
+    dep_vars = get_depend_vars(var)
+    if dep_vars is None:
+        dep_vars = [time_var]
+    else:
+        old_time_var = get_time_var(var)
+        dep_vars = [sub.replace(old_time_var,time_var) for sub in devpoll]
+    settings = {
+        'depend_vars': dep_vars,
+        'time_var': time_var,
+    }
+    set_setting(var, settings)
+
 def get_depend_vars(var):
     return data_quants[var].attrs.get('depend_vars', None)
+
+def set_depend_vars(var, dep_vars):
+    set_setting(var, {'depend_vars': dep_vars})
 
 def rename(var, out_var=None):
     if out_var is None: return
