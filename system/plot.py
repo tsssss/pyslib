@@ -1,10 +1,19 @@
+from turtle import width
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import system.manager as smg
 from system.manager import data_quants
 import libs.math as math
 import system.constant as constant
+import numpy as np
+from matplotlib import ticker
+import libs.epoch as epoch
 
+high_level_vars = ['combo_scalar','scalar_with_color']
+
+
+default_position = [0.2,0.2,0.7,0.8]
+default_linewidth = 1
 plot_setting_key = 'plot_setting'
 default_plot_setting = {
     'lines.linewidth': 1,
@@ -27,7 +36,7 @@ default_plot_setting = {
     'legend.handletextpad': 0,
 }
 default_figsize = (6,3)
-default_fig_label_offset = 12
+default_fig_label_offset = 14
 
 
 
@@ -37,8 +46,6 @@ def set_plot_setting(var, settings):
     data_quants[var].attrs[plot_setting_key].update(settings)
 
 
-from matplotlib import ticker
-import libs.epoch as epoch
 @ticker.FuncFormatter
 def slib_time_formatter(x, pos):
     msg = epoch.convert_time(x, input='unix', output='%H:%M')
@@ -69,150 +76,13 @@ def add_fig_label(ax, fig_label, offset=None):
     if offset is None: offset = default_fig_label_offset
     ax.text(0,1, fig_label+offset*' ', va='top', ha='right', transform=ax.transAxes)
 
-
-def plot_scalar(var,
-    position=None,
-    xrange=None,
-    ytitle=None,
-    fig_label=None,
-    fig=None,
+def open(
+    figsize=(6,4),
 ):
 
-    if position is None:
-        position = [0.15,0.15,0.7,0.8]
-    ax = fig.add_axes(position)
-
-    x = smg.get_time(var)
-    y = smg.get_data(var)
-    var_settings = smg.get_setting(var)
-
-    if ytitle is None:
-        unit = var_settings.get('unit', None)
-        if unit is None: unit = var_settings.get('UNITS', None)
-        ytitle = make_title_from_unit(unit)
-    labels = var_settings.get('short_name', '')
-    colors = 'black'
-
-    ax.plot(x,y, color=colors, label=labels)
-
-    # Add lagend.
-    lg = ax.legend(
-        bbox_to_anchor=(1,0.5),
-        loc='center left',
-        frameon=False,
-        handlelength=0,
-        handletextpad=0,
-    )
-    text = (lg.get_texts())[0]
-    text.set_color(colors)
-
-    if ytitle is not None:
-        ax.set_ylabel(ytitle)
-    ax.tick_params(axis='x', which='major', bottom=True)
-    ax.tick_params(axis='x', which='major', top=True)
-    ax.tick_params(axis='y', which='major', left=True)
-    ax.tick_params(axis='y', which='major', right=True)
-
-    plt.minorticks_on()
-    ax.tick_params(axis='x', which='minor', bottom=True)
-    ax.tick_params(axis='x', which='minor', top=True)
-    ax.tick_params(axis='y', which='minor', left=True)
-    ax.tick_params(axis='y', which='minor', right=True)
-    ax.grid(linewidth=0.5, color='gray', alpha=0.25)
-
-    ylog = var_settings.get('ylog', False)
-    if ylog is True:
-        ax.set_yscale('log')
-    yrange = var_settings.get('yrange', None)
-    if yrange is not None:
-        ax.set_ylim(yrange)
-
-    # Set xticks.
-    if xrange is None: xrange = [min(x),max(x)+60]
-    xminor = 6
-    xstep = 3600*xminor
-    xticks = math.mkarthm(xrange[0], xrange[1], xstep, 'dx')
-    ax.set_xticks(xticks)
-    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(xminor))
-    ax.set_xlim(xrange)
-    ax.xaxis.set_major_formatter(slib_time_formatter)
-
-    # Add figure label.
-    add_fig_label(ax, fig_label)
-
-
-def plot_vector(var,
-    position=None,
-    xrange=None,
-    ytitle=None,
-    fig_label=None,
-    fig=None,
-):
-
-    if position is None:
-        position = [0.15,0.15,0.7,0.8]
-    ax = fig.add_axes(position)
-
-    x = smg.get_time(var)
-    y = smg.get_data(var)
-    var_settings = smg.get_setting(var)
-
-    if ytitle is None:
-        unit = var_settings.get('unit', None)
-        if unit is None: unit = var_settings.get('UNITS', None)
-        ytitle = make_title_from_unit(unit)
-    yrange = var_settings.get('yrange', None)
-    if yrange is not None:
-        ax.set_ylim(yrange)
-
-    colors = list('rgb')
-    coord = var_settings['coord']
-    short_name = var_settings['short_name']
-    coord_labels = var_settings['coord_labels']
-    labels = [coord.upper()+' $'+short_name+'_'+x+'$' for x in coord_labels]
-    ndim = len(colors)
-    for i in range(ndim):
-        ax.plot(x,y[:,i], color=colors[i], label=labels[i])
-
-    if ytitle is not None:
-        ax.set_ylabel(ytitle)
-    ax.tick_params(axis='x', which='major', bottom=True)
-    ax.tick_params(axis='x', which='major', top=True)
-    ax.tick_params(axis='y', which='major', left=True)
-    ax.tick_params(axis='y', which='major', right=True)
-
-    plt.minorticks_on()
-    ax.tick_params(axis='x', which='minor', bottom=True)
-    ax.tick_params(axis='x', which='minor', top=True)
-    ax.tick_params(axis='y', which='minor', left=True)
-    ax.tick_params(axis='y', which='minor', right=True)
-    ax.grid(linewidth=0.5, color='gray', alpha=0.25)
-
-    # Add lagend.
-    lg = ax.legend(
-        bbox_to_anchor=(1,0.5),
-        loc='center left',
-        frameon=False,
-        handlelength=0,
-        handletextpad=0,
-    )
-    for text, color in zip(lg.get_texts(),colors):
-        text.set_color(color)
-
-    # Set xticks.
-    if xrange is None: xrange = [min(x),max(x)+60]
-    xminor = 6
-    xstep = 3600*xminor
-    xticks = math.mkarthm(xrange[0], xrange[1], xstep, 'dx')
-    ax.set_xticks(xticks)
-    ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(xminor))
-    ax.set_xlim(xrange)
-    ax.xaxis.set_major_formatter(slib_time_formatter)
-
-    # Add figure label.
-    add_fig_label(ax, fig_label)
-
-    return ax
+    # fig = matplotlib.pyplot.gcf()
+    # fig.set_size_inches(18.5, 10.5)
+    return plt.figure(1, figsize=figsize)
 
 
 
@@ -224,27 +94,494 @@ def set_color(var, colors):
     set_plot_setting(var, {'axes.prop_cycle': mpl.cycler('color',c)})
 
 
-def plot(var,
-    position=None,
-    xrange=None,
-    figsize=default_figsize,
-):
-
-    if xrange is not None:
-        xrange = smg.prepare_time_range(xrange)
-
-    fig = plt.figure(1, figsize=figsize)
-    fig_label = 'a)'
-
-    display_type = smg.get_setting(var, 'display_type')
-    if display_type == 'vector':
-        ax = plot_vector(var, fig=fig, xrange=xrange, fig_label=fig_label)
-    elif display_type == 'scalar':
-        ax = plot_scalar(var, fig=fig, xrange=xrange, fig_label=fig_label)
-    
-    return ax
-
 
 def make_title_from_unit(unit):
     if unit is None: return None
     return '('+unit+')'
+
+
+
+class Fig():
+
+    default_figure_size = (6,3)
+
+    def __init__(self,
+        size=default_figure_size,
+    ):
+
+        self.fig = plt.figure(figsize=size)
+        self.abs_charsize = _get_abs_chsz()
+        self.panels = None
+        self.size = size
+
+    
+    def panel_pos(
+        self,
+        pansize=(2,0.5),
+        panid=(0,0),
+        nxpan=1,
+        nypan=1,
+        xpans=[1],
+        ypans=[1],
+        xpads=[8],
+        ypads=[0.4],
+        margins=[10,2,4,1],
+        fit_method='as_is',
+    ):
+
+        self.panel_init(
+            pansize=pansize,
+            panid=panid,
+            nxpan=nxpan,
+            nypan=nypan,
+            xpans=xpans,
+            ypans=ypans,
+            xpads=xpads,
+            ypads=ypads,
+            margins=margins,
+        )
+
+        if fit_method == 'as_is':
+            pass
+        elif fit_method == 'resize':
+            fig_size = self.fig.get_size_inches()
+            self.panel_resize(xsize=fig_size[0], ysize=fig_size[1])
+        
+        self.panel_normlize()
+
+        panshape = self.panels['norm_pos'].shape
+        axes = list()
+        for xpan_id in range(panshape[1]):
+            the_axes = list()
+            for ypan_id in range(panshape[2]):
+                rect = self.panels['norm_pos'][:,xpan_id,ypan_id].copy()
+                rect[2] = rect[2]-rect[0]
+                rect[3] = rect[3]-rect[1]
+                the_axes.append(self.fig.add_axes(rect))
+            axes.append(the_axes)
+
+        shared_id = nypan-1
+        for xpan_id in range(panshape[1]):
+            for ypan_id in range(panshape[2]):
+                if ypan_id != shared_id:
+                    axes[xpan_id][ypan_id].get_shared_x_axes().join(axes[xpan_id][ypan_id],axes[xpan_id][shared_id])
+                    axes[xpan_id][ypan_id].set_xticklabels([])
+            
+                axes[xpan_id][ypan_id].minorticks_on()
+                axes[xpan_id][ypan_id].grid(linewidth=default_linewidth*0.5, color='gray', alpha=0.25)
+                axes[xpan_id][ypan_id].tick_params(axis='y', which='major', left=True)
+                axes[xpan_id][ypan_id].tick_params(axis='y', which='major', right=True)
+                axes[xpan_id][ypan_id].tick_params(axis='y', which='minor', left=True)
+                axes[xpan_id][ypan_id].tick_params(axis='y', which='minor', right=True)
+
+                axes[xpan_id][ypan_id].tick_params(axis='x', which='major', top=True)
+                axes[xpan_id][ypan_id].tick_params(axis='x', which='minor', top=True)
+                axes[xpan_id][ypan_id].tick_params(axis='x', which='major', bottom=True)
+                axes[xpan_id][ypan_id].tick_params(axis='x', which='minor', bottom=True)
+
+        self.axes = axes
+        return axes
+
+
+
+
+    def panel_normlize(
+        self
+    ):
+
+        abs_pos = self.panels['abs_pos']
+        norm_pos = abs_pos
+        norm_pos[[0,2],:,:] /= self.panels['xsize']
+        norm_pos[[1,3],:,:] /= self.panels['ysize']
+        self.panels['norm_pos'] = norm_pos
+
+
+
+    def panel_resize(
+        self,
+        xsize=default_figure_size[0],
+        ysize=default_figure_size[1],
+    ):
+
+        abs_pos = self.panels['abs_pos']
+        if xsize is not None:
+            xpans = self.panels['xpansize']
+            abs_xspace = self.panels['xspace']
+            xpans = (xsize-np.sum(abs_xspace))/np.sum(xpans)*xpans
+            for xpan_id in range(len(xpans)):
+                if xpan_id == 0:
+                    x0 = 0
+                else:
+                    x0 = abs_pos[2,xpan_id-1,0]
+                abs_pos[0,xpan_id,:] = x0+abs_xspace[xpan_id]
+                abs_pos[2,xpan_id,:] = abs_pos[0,xpan_id,:]+xpans[xpan_id]
+            self.panels['xpansize'] = xpans
+            self.panels['xsize'] = xsize
+        if ysize is not None:
+            ypans = self.panels['ypansize']
+            abs_yspace = self.panels['yspace']
+            ypans = (ysize-np.sum(abs_yspace))/np.sum(ypans)*ypans
+            for ypan_id in range(len(ypans)):
+                if ypan_id == 0:
+                    y0 = ysize
+                else:
+                    y0 = abs_pos[1,0,ypan_id-1]
+                abs_pos[3,:,ypan_id] = y0-abs_yspace[ypan_id]
+                abs_pos[1,:,ypan_id] = abs_pos[3,:,ypan_id]-ypans[ypan_id]
+            self.panels['ypansize'] = ypans
+            self.panels['ysize'] = ysize
+
+    def panel_init(
+        self,
+        pansize=[2,0.5],
+        panid=(0,0),
+        nxpan=1,
+        nypan=1,
+        xpans=[1],
+        ypans=[1],
+        xpads=[8],
+        ypads=[0.4],
+        margins=[10,2,4,1],
+    ):
+
+        if len(xpans) != nxpan:
+            xpans = np.full((nxpan), xpans[0])
+        if len(ypans) != nypan:
+            ypans = np.full((nypan), ypans[0])
+        if len(xpads) != nxpan-1:
+            xpads = np.full((nxpan-1), xpads[0])
+        if len(ypads) != nypan-1:
+            ypads = np.full((nypan-1), ypads[0])
+        
+        xpans = np.array(xpans)
+        ypans = np.array(ypans)
+        xpads = np.array(xpads)
+        ypads = np.array(ypads)
+
+        xpansize = pansize[0]*xpans/xpans[panid[0]]
+        ypansize = pansize[1]*ypans/ypans[panid[1]]
+
+        abs_xchsz, abs_ychsz = self.abs_charsize
+
+        # Calc panel size.
+        abs_xspace = np.array([margins[0],margins[2]])*abs_xchsz
+        abs_yspace = np.array([margins[3],margins[1]])*abs_ychsz
+        if len(xpads) != 0: abs_xspace = np.insert(abs_xspace, 1, xpads*abs_xchsz)
+        if len(ypads) != 0: abs_yspace = np.insert(abs_yspace, 1, ypads*abs_ychsz)
+        region_xsize = np.sum(xpansize)+np.sum(abs_xspace)
+        region_ysize = np.sum(ypansize)+np.sum(abs_yspace)
+
+        abs_pos = np.empty((4,nxpan,nypan))
+        for ypan_id in range(nypan):
+            if ypan_id == 0:
+                y0 = region_ysize
+            else:
+                y0 = abs_pos[1,0,ypan_id-1]
+            for xpan_id in range(nxpan):
+                if xpan_id == 0:
+                    x0 = 0
+                else:
+                    x0 = abs_pos[2,xpan_id-1,0]
+                abs_pos[0,xpan_id,ypan_id] = x0+abs_xspace[xpan_id]
+                abs_pos[3,xpan_id,ypan_id] = y0-abs_yspace[ypan_id]
+                abs_pos[2,xpan_id,ypan_id] = abs_pos[0,xpan_id,ypan_id]+xpansize[xpan_id]
+                abs_pos[1,xpan_id,ypan_id] = abs_pos[3,xpan_id,ypan_id]-ypansize[ypan_id]
+
+        self.panels = {
+            'xspace': abs_xspace,
+            'xspace': abs_xspace,
+            'yspace': abs_yspace,
+            'xpansize': xpansize,
+            'ypansize': ypansize,
+            'abs_pos': abs_pos,
+            'xsize': region_xsize,
+            'ysize': region_ysize,
+        }
+
+
+    def plot_scalar(self,
+        ax, var,
+        colors='k',
+        labels='',
+    ):
+
+        x = smg.get_time(var)
+        y = smg.get_data(var)
+        ax.plot(x,y, color=colors, label=labels, linewidth=default_linewidth)
+
+    
+    def plot_vector(self,
+        ax, var,
+        colors=list('rgb'),
+        labels=list('xyz'),
+    ):
+
+        x = smg.get_time(var)
+        y = smg.get_data(var)
+        ndim = y.shape[1]
+        for i in range(ndim):
+            ax.plot(x,y[:,i], color=colors[i], label=labels[i], linewidth=default_linewidth)
+
+    def plot_scalar_with_color(self,
+        ax, var,
+        colors=None,
+        labels='',
+    ):
+
+        vars = smg.get_data(var)
+        scalar_var = vars[0]
+        color_var = vars[1]
+
+        x = smg.get_time(scalar_var)
+        y = smg.get_data(scalar_var)
+        z = smg.get_data(color_var)
+        z_setting = smg.get_setting(color_var)
+
+        zlog = z_setting.get('ylog', False)
+        z_unit = z_setting.get('unit', '')
+        ztitle = make_title_from_unit(z_unit)
+        if zlog is True:
+            z = np.log10(z)
+            ztitle = 'Log$_{10}$\n'+ztitle
+
+
+        # Draw the color-coded line.
+        color_table = smg.get_setting(var, 'color_table')
+        if color_table is None: color_table = 'jet'
+        sc = ax.scatter(x,y, c=z, cmap=color_table, s=default_linewidth)
+
+        # Add ytitle and adjust y-scale.
+        settings = smg.get_setting(scalar_var)
+        unit = settings.get('unit', None)
+        ytitle = make_title_from_unit(unit)
+        short_name = settings.get('short_name', '')
+        ytitle = short_name+' '+ytitle
+        ax.set_ylabel(ytitle)
+
+        ylog = settings.get('ylog', False)
+        if ylog is True:
+            ax.set_yscale('log')
+        yscale = settings.get('yscale', None)
+        if yscale is not None:
+            ax.set_yscale(yscale)
+        
+        # Add colorbar.
+        pos = ax.get_position()
+        xchsz, _ = self.abs_charsize
+        fig_xsz, _ = self.size
+        xpad = xchsz/fig_xsz
+        x0 = pos.x1+xpad
+        width = xchsz/fig_xsz
+        cbpos = [x0,pos.y0,width,pos.y1-pos.y0]
+        cax = self.fig.add_axes(cbpos)
+        cb = self.fig.colorbar(sc, cax=cax)
+        cb.set_label(ztitle)
+
+
+    def plot_flux(self,
+        ax, var,
+        colors=[],
+        labels=[],
+    ):
+
+        x = smg.get_time(var)
+        y = smg.get_data(var)
+
+        flux_index = smg.get_setting(var, 'flux_index').astype(int)
+        if flux_index is not None:
+            y = y[:,flux_index]
+            labels = np.array(labels)[flux_index]
+            colors = np.array(colors)[flux_index]
+
+
+        ndim = y.shape[1]
+        for i in range(ndim):
+            ax.plot(x,y[:,i], color=colors[i], label=labels[i], linewidth=default_linewidth)
+    
+    def plot_combo_scalar(self,
+        ax, var,
+        colors=list('rgb'),
+        labels=list('xyz'),
+    ):
+
+        vars = smg.get_data(var)
+        x = smg.get_time(vars[0])
+        y = smg.get_data(vars[0])
+        ax.plot(x,y, color=colors[0], label=labels[0], linewidth=default_linewidth)
+        ax.tick_params(axis='y', which='major', left=True)
+        ax.tick_params(axis='y', which='minor', left=True)
+        ax.tick_params(axis='y', which='major', right=False)
+        ax.tick_params(axis='y', which='minor', right=False)
+        ax.spines['right'].set_visible(False)
+
+        ax2 = ax.twinx()
+        x = smg.get_time(vars[1])
+        y = smg.get_data(vars[1])
+        ax2.plot(x,y, color=colors[1], label=labels[1], linewidth=default_linewidth)
+        ax2.minorticks_on()
+        ax2.tick_params(axis='y', which='major', left=False)
+        ax2.tick_params(axis='y', which='minor', left=False)
+        ax2.tick_params(axis='y', which='major', right=True)
+        ax2.tick_params(axis='y', which='minor', right=True)
+        ax2.spines['right'].set_color(colors[1])
+        [t.set_color(colors[1]) for t in ax2.yaxis.get_ticklabels()]
+
+        
+
+        for the_var, the_ax, color in zip(vars,[ax,ax2], colors):
+            settings = smg.get_setting(the_var)
+            unit = settings.get('unit', None)
+            ytitle = make_title_from_unit(unit)
+            short_name = settings.get('short_name', '')
+            ytitle = short_name+' '+ytitle
+            the_ax.set_ylabel(ytitle, color=color)
+
+            ylog = settings.get('ylog', False)
+            if ylog is True:
+                the_ax.set_yscale('log')
+            yscale = settings.get('yscale', None)
+            if yscale is not None:
+                the_ax.set_yscale(yscale)
+
+        
+    
+    def add_legend(self, ax,):
+        
+        lg = ax.legend(
+            bbox_to_anchor=(1,0.5),
+            loc='center left',
+            frameon=False,
+            handlelength=0,
+            handletextpad=0,
+        )
+        for text, line in zip(lg.get_texts(),ax.get_lines()):
+            text.set_color(line.get_color())
+
+
+    def plot(self, vars=[], xrange=None, fig_labels=[],
+        margins=[8,2,8,1],
+        ypans=[],
+    ):
+
+
+        nvar = len(vars)
+        if nvar == 0: return None
+
+
+        if xrange is None:
+            var = vars[-1]
+            display_type = smg.get_setting(var, 'display_type')
+            if display_type in high_level_vars:
+                the_var = smg.get_data(var)[0]
+                x = smg.get_time(the_var)
+            else:
+                x = smg.get_time(var)
+            xrange = [min(x),max(x)]
+        
+        if len(fig_labels) != nvar:
+            fig_labels = [chr(x+97)+')' for x in range(nvar)]
+
+        nypan = nvar
+        if len(ypans) != nypan: ypans = np.full(nypan,1)
+        axes = (self.panel_pos(nypan=nypan, margins=margins, ypans=ypans))[0]
+        for var, ax, fl in zip(vars, axes, fig_labels):
+            self.plot_single_var(ax, var, xrange=xrange, fig_label=fl)
+
+    
+    def plot_single_var(self, ax, var, xrange=None, fig_label=None):
+
+        settings = smg.get_setting(var)
+
+        display_type = settings.get('display_type', 'scalar')
+        short_name = settings.get('short_name','')
+    
+        if display_type == 'scalar':
+            labels = short_name
+            colors = settings.get('colors','k')
+        elif display_type == 'vector':
+            coord = settings.get('coord', '').upper()
+            coord_labels = settings.get('coord_labels', list('xyz'))
+            labels = [coord+' '+short_name+'$_{'+x+'}$' for x in coord_labels]
+            colors = settings.get('colors', list('rgb'))
+        elif display_type == 'flux':
+            energy_var = settings['energy_var']
+            energys = smg.get_data(energy_var)
+            energy_unit = settings.get('energy_unit','')
+            labels = [str(np.int(x))+' '+energy_unit for x in energys]
+            color_table = settings.get('color_table', 'Blues')
+            cmap = plt.get_cmap(color_table)
+            color_bottom = 0.9
+            color_top = 0.3
+            colors = [cmap(x) for x in np.linspace(color_bottom,color_top,len(energys))]
+            colors.reverse()
+        elif display_type == 'combo_scalar':
+            colors = settings.get('colors',['k','r'])
+            labels = settings.get('labels',[])
+            if len(labels) == 0:
+                labels = smg.get_data(var)
+                if labels is None:
+                    raise Exception('No combo_vars ...')
+        else:
+            labels = var
+            colors = 'k'
+        
+        if display_type == 'scalar':
+            self.plot_scalar(ax, var, colors=colors, labels=labels)
+        elif display_type == 'vector':
+            self.plot_vector(ax, var, colors=colors, labels=labels)
+        elif display_type == 'flux':
+            self.plot_flux(ax, var, colors=colors, labels=labels)
+        elif display_type == 'combo_scalar':
+            self.plot_combo_scalar(ax, var, colors=colors, labels=labels)
+        elif display_type == 'scalar_with_color':
+            self.plot_scalar_with_color(ax, var)
+        else:
+            try:
+                self.plot_scalar(ax, var, colors=colors, labels=labels)
+            except:
+                pass
+        
+        if display_type not in high_level_vars:
+            self.add_legend(ax)
+
+            unit = settings.get('unit', None)
+            ytitle = make_title_from_unit(unit)
+            ax.set_ylabel(ytitle)
+
+            ylog = settings.get('ylog', False)
+            if ylog is True:
+                ax.set_yscale('log')
+            yscale = settings.get('yscale', None)
+            if yscale is not None:
+                ax.set_yscale(yscale)
+
+
+        if xrange is not None:
+            ax.set_xlim(xrange)
+        
+        if fig_label is not None:
+            add_fig_label(ax, fig_label)
+
+        
+
+
+
+
+def _get_abs_chsz():
+    fig = plt.figure(figsize=(1,1))
+    fig_size = fig.get_size_inches()
+
+    ax = fig.add_axes([0,0,1,1])
+    x = 'x'
+    txt = ax.text(0.5,0.5,x)
+    bbox = txt.get_window_extent()
+    bbox_norm = bbox.transformed(fig.transFigure.inverted())
+
+    # The x and y sizes in inch of a typical character.
+    abs_xchsz = (bbox_norm.x1-bbox_norm.x0)*fig_size[0]
+    abs_ychsz = (bbox_norm.y1-bbox_norm.y0)*fig_size[1]
+
+    plt.close(fig)
+
+    return abs_xchsz, abs_ychsz
+    

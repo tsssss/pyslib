@@ -1,6 +1,5 @@
 # from collections import OrderedDict
 import os
-from select import devpoll
 import xarray as xr
 import numpy as np
 from libs.cdf import cdf as cdf
@@ -20,43 +19,58 @@ import libs.vector as vector
 data_quants = dict()
 
 def set_data(var, data, settings=None):
-    data_quants[var] = xr.DataArray(data)
-    data_quants[var].name = var
-    if settings is None:
-        data_quants[var].attr = {}
+    if has_var(var):
+        data_quants[var].values = data
+        if settings is not None:
+            set_setting(var, settings)
     else:
-        set_setting(var, settings)
+        data_quants[var] = xr.DataArray(data)
+        data_quants[var].name = var
+        if settings is not None:
+            set_setting(var, settings)
 
-    # More smart actions.
-    key = 'display_type'
-    if get_setting(var, key) is None:
-        dims = data.shape
-        if len(dims) == 2:
-            if dims[1] == 3:
-                display_type = 'vector'
+        # More smart actions.
+        key = 'display_type'
+        if get_setting(var, key) is None:
+            dims = data.shape
+            if len(dims) == 2:
+                if dims[1] == 3:
+                    display_type = 'vector'
+                else:
+                    display_type = 'list'
+            elif len(dims) == 1:
+                display_type = 'scalar'
             else:
-                display_type = 'list'
-        elif len(dims) == 1:
-            display_type = 'scalar'
-        else:
-            display_type = None
-        if display_type is not None:
-            set_setting(var, {key: display_type})
-    
-    key = 'unit'
-    if get_setting(var, key) is None:
-        unit = get_setting(var, 'UNITS')
-        unit = unit.replace('!U', '$^{')
-        unit = unit.replace('!E', '$^{')
-        unit = unit.replace('!N', '}$')
-        set_setting(var, {key: unit})
+                display_type = None
+            if display_type is not None:
+                set_setting(var, {key: display_type})
+        display_type = get_setting(var, key)
+        
+        if display_type == 'vector':
+            key = 'coord_labels'
+            if get_setting(var, key) is None:
+                val = list('xyz')
+                set_setting(var, {key: val})
+        
+        key = 'unit'
+        if get_setting(var, key) is None:
+            unit = get_setting(var, 'UNITS')
+            if unit is not None:
+                unit = unit.replace('!U', '$^{')
+                unit = unit.replace('!E', '$^{')
+                unit = unit.replace('!N', '}$')
+                set_setting(var, {key: unit})
 
-    key = 'time_var'
-    if get_setting(var, key) is None:
-        dep_vars = get_setting(var, 'depend_vars')
-        if dep_vars is not None:
-            time_var = dep_vars[0]
-            set_setting(var, {key: time_var})
+        key = 'time_var'
+        if get_setting(var, key) is None:
+            dep_vars = get_setting(var, 'depend_vars')
+            if dep_vars is not None:
+                time_var = dep_vars[0]
+                set_time_var(var, time_var)
+    
+
+
+
 
 
 def set_setting(var, settings):
@@ -82,7 +96,8 @@ def set_time_var(var, time_var):
         dep_vars = [time_var]
     else:
         old_time_var = get_time_var(var)
-        dep_vars = [sub.replace(old_time_var,time_var) for sub in devpoll]
+        if old_time_var is not None:
+            dep_vars = [sub.replace(old_time_var,time_var) for sub in dep_vars]
     settings = {
         'depend_vars': dep_vars,
         'time_var': time_var,
@@ -309,21 +324,22 @@ def cdf_read_var(
             if depend_var == time_var:
                 data = epoch.convert_time(data, input=time_format, output=default_time_format)
             # Need to avoid overwriting existing var.
-            while has_var(depend_var):
+            uniq_depend_var = depend_var
+            while has_var(uniq_depend_var):
                 # No need to update the depend_var.
-                if np.array_equal(data, get_data(depend_var)):
+                if np.array_equal(data, get_data(uniq_depend_var)):
                     break
                 else:
                     # Change to a different name and try again.
-                    depend_var += '_'
+                    uniq_depend_var += '_'
             else:
                 # If depend_var does not exist, then save the data and setting.
-                set_data(depend_var, data, settings=the_data_setting)
-            depend_vars.append(depend_var)
+                set_data(uniq_depend_var, data, settings=the_data_setting)
+            depend_vars.append(uniq_depend_var)
 
-            if depend_var == time_var:
-                set_setting(var, {'time_var':time_var})
-        set_setting(var, {'depend_vars':depend_vars})
+            if time_var in depend_var:
+                set_time_var(var, uniq_depend_var)
+        set_depend_vars(var, depend_vars)
 
 
 

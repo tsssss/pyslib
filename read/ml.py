@@ -417,4 +417,9 @@ def rbsp_en_spec(
     }
     smg.set_setting(var, settings=settings)
 
+    data = smg.get_data(var)
+    fill_value = 0.01
+    data[data < fill_value] = np.nan
+    smg.set_data(var, data)
+
     return var
