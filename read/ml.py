@@ -420,6 +420,6 @@ def rbsp_en_spec(
     data = smg.get_data(var)
     fill_value = 0.01
     data[data < fill_value] = np.nan
-    smg.set_data(var, data)
+    smg.update_data(var, data)
 
     return var

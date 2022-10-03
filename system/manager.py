@@ -18,55 +18,53 @@ import libs.vector as vector
 # To store data in memory.
 data_quants = dict()
 
+def update_data(var, data):
+    data_quants[var].values = data
+
 def set_data(var, data, settings=None):
-    if has_var(var):
-        data_quants[var].values = data
-        if settings is not None:
-            set_setting(var, settings)
-    else:
-        data_quants[var] = xr.DataArray(data)
-        data_quants[var].name = var
-        if settings is not None:
-            set_setting(var, settings)
+    data_quants[var] = xr.DataArray(data)
+    data_quants[var].name = var
+    if settings is not None:
+        set_setting(var, settings)
 
-        # More smart actions.
-        key = 'display_type'
-        if get_setting(var, key) is None:
-            dims = data.shape
-            if len(dims) == 2:
-                if dims[1] == 3:
-                    display_type = 'vector'
-                else:
-                    display_type = 'list'
-            elif len(dims) == 1:
-                display_type = 'scalar'
+    # More smart actions.
+    key = 'display_type'
+    if get_setting(var, key) is None:
+        dims = data.shape
+        if len(dims) == 2:
+            if dims[1] == 3:
+                display_type = 'vector'
             else:
-                display_type = None
-            if display_type is not None:
-                set_setting(var, {key: display_type})
-        display_type = get_setting(var, key)
-        
-        if display_type == 'vector':
-            key = 'coord_labels'
-            if get_setting(var, key) is None:
-                val = list('xyz')
-                set_setting(var, {key: val})
-        
-        key = 'unit'
+                display_type = 'list'
+        elif len(dims) == 1:
+            display_type = 'scalar'
+        else:
+            display_type = None
+        if display_type is not None:
+            set_setting(var, {key: display_type})
+    display_type = get_setting(var, key)
+    
+    if display_type == 'vector':
+        key = 'coord_labels'
         if get_setting(var, key) is None:
-            unit = get_setting(var, 'UNITS')
-            if unit is not None:
-                unit = unit.replace('!U', '$^{')
-                unit = unit.replace('!E', '$^{')
-                unit = unit.replace('!N', '}$')
-                set_setting(var, {key: unit})
+            val = list('xyz')
+            set_setting(var, {key: val})
+    
+    key = 'unit'
+    if get_setting(var, key) is None:
+        unit = get_setting(var, 'UNITS')
+        if unit is not None:
+            unit = unit.replace('!U', '$^{')
+            unit = unit.replace('!E', '$^{')
+            unit = unit.replace('!N', '}$')
+            set_setting(var, {key: unit})
 
-        key = 'time_var'
-        if get_setting(var, key) is None:
-            dep_vars = get_setting(var, 'depend_vars')
-            if dep_vars is not None:
-                time_var = dep_vars[0]
-                set_time_var(var, time_var)
+    key = 'time_var'
+    if get_setting(var, key) is None:
+        dep_vars = get_setting(var, 'depend_vars')
+        if dep_vars is not None:
+            time_var = dep_vars[0]
+            set_time_var(var, time_var)
     
 
 
