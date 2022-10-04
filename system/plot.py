@@ -1,3 +1,6 @@
+from cProfile import label
+from email import message
+from inspect import getcomments
 from turtle import width
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -322,6 +325,39 @@ class Fig():
         for i in range(ndim):
             ax.plot(x,y[:,i], color=colors[i], label=labels[i], linewidth=default_linewidth)
 
+    def plot_combo_vector(self,
+        ax, var,
+        colors=[],
+        labels=[],
+    ):
+
+        vars = smg.get_data(var)
+        nvar = len(vars)
+        if len(colors) != nvar:
+            if nvar == 1:
+                colors = ['k']
+            elif nvar == 2:
+                colors = list('rb')
+            elif nvar < 7:
+                colors = list('rgbcmyk')[0:nvar-1]
+            else:
+                colors = get_color(nvar)
+        
+        if len(labels) != nvar:
+            labels = vars.copy()
+            for i in range(nvar):
+                short_name = smg.get_setting(vars[i], 'short_name')
+                if short_name is not None:
+                    labels[i] = short_name
+        
+
+        x = smg.get_time(vars[0])
+        for var, color, label in zip(vars, colors, labels):
+            y = smg.get_data(var)
+            ax.plot(x,y, color=color, label=label, linewidth=default_linewidth)
+
+
+
     def plot_scalar_with_color(self,
         ax, var,
         colors=None,
@@ -509,11 +545,7 @@ class Fig():
             energy_unit = settings.get('energy_unit','')
             labels = [str(np.int(x))+' '+energy_unit for x in energys]
             color_table = settings.get('color_table', 'Blues')
-            cmap = plt.get_cmap(color_table)
-            color_bottom = 0.9
-            color_top = 0.3
-            colors = [cmap(x) for x in np.linspace(color_bottom,color_top,len(energys))]
-            colors.reverse()
+            colors = get_color(len(energys), color_table=color_table)
         elif display_type == 'combo_scalar':
             colors = settings.get('colors',['k','r'])
             labels = settings.get('labels',[])
@@ -521,9 +553,12 @@ class Fig():
                 labels = smg.get_data(var)
                 if labels is None:
                     raise Exception('No combo_vars ...')
+        elif display_type == 'combo_vector':
+            colors = settings.get('colors', [])
+            labels = settings.get('labels', [])
         else:
-            labels = var
             colors = 'k'
+            labels = var
         
         if display_type == 'scalar':
             self.plot_scalar(ax, var, colors=colors, labels=labels)
@@ -535,6 +570,8 @@ class Fig():
             self.plot_combo_scalar(ax, var, colors=colors, labels=labels)
         elif display_type == 'scalar_with_color':
             self.plot_scalar_with_color(ax, var)
+        elif display_type == 'combo_vector':
+            self.plot_combo_vector(ax, var, colors=colors, labels=labels)
         else:
             try:
                 self.plot_scalar(ax, var, colors=colors, labels=labels)
@@ -585,3 +622,16 @@ def _get_abs_chsz():
 
     return abs_xchsz, abs_ychsz
     
+
+def get_color(
+    ncolor,
+    color_table='jet',
+    color_range=[0.3,0.9],
+    reverse_color=False):
+
+    cmap = plt.get_cmap(color_table)
+    color_bottom = color_range[0]
+    color_top = color_range[1]
+    colors = [cmap(x) for x in np.linspace(color_bottom,color_top, ncolor)]
+    if reverse_color is True: colors.reverse()
+    return colors

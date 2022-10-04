@@ -33,6 +33,14 @@ def main():
         data=[read.ml.symh(time_range),read.ml.ae(time_range),],
         settings=settings)
     
+    var_combo2 = 'ae_dst_vector'
+    settings = {
+        'display_type': 'combo_vector',
+    }
+    smg.set_data(var_combo2,
+        data=smg.get_data(var_combo),
+        settings=settings)
+    
     var_scalar_with_color = 'l_on_flux'
     settings = {
         'display_type': 'scalar_with_color',
@@ -45,7 +53,7 @@ def main():
 
 
     fig = spl.Fig((10,6))
-    vars = [var_vector,flux_var,var_combo,var_scalar_with_color]
+    vars = [var_vector,flux_var,var_combo,var_combo2,var_scalar_with_color]
 #    vars = [var_vector,var_scalar,flux_var]
     smg.set_setting(var_spec, {'display_type':'flux'})
     fig.plot(vars)
