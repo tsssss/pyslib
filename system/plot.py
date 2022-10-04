@@ -12,7 +12,7 @@ import numpy as np
 from matplotlib import ticker
 import libs.epoch as epoch
 
-high_level_vars = ['combo_scalar','scalar_with_color']
+high_level_vars = ['combo_scalar','scalar_with_color','combo_vector']
 
 
 default_position = [0.2,0.2,0.7,0.8]
@@ -355,6 +355,21 @@ class Fig():
         for var, color, label in zip(vars, colors, labels):
             y = smg.get_data(var)
             ax.plot(x,y, color=color, label=label, linewidth=default_linewidth)
+
+
+        self.add_legend(ax)
+
+        settings = smg.get_setting(vars[0])
+        unit = settings.get('unit', None)
+        ytitle = make_title_from_unit(unit)
+        ax.set_ylabel(ytitle)
+
+        ylog = settings.get('ylog', False)
+        if ylog is True:
+            ax.set_yscale('log')
+        yscale = settings.get('yscale', None)
+        if yscale is not None:
+            ax.set_yscale(yscale)
 
 
 
