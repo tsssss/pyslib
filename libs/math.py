@@ -1,6 +1,25 @@
 import itertools
 import numpy as np
 
+def make_bins(range, step, inner=False):
+
+    step0 = abs(step)
+    range0 = [min(range),max(range)]
+    range1 = range0-(range0 % step0)
+    if inner is True:
+        if range1[0] < range0[0]: range1[0] += step0
+        if range1[1] > range0[1]: range1[1] -= step0
+    else:
+        if range1[0] > range0[0]: range1[0] -= step0
+        if range1[1] < range0[1]: range1[1] += step0
+    
+    if range1[0] > range1[1]: return np.array([])
+    if range1[0] == range1[1]: return np.array([range1[0]])
+
+    nbin = np.round((range1[1]-range1[0])/step0)
+    return range1[0]+np.arange(nbin+1)*step0
+
+
 def mkarthm(a, b, c, mode):
     """
     mode='x0', a=x0, b=dx, c=n

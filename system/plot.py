@@ -1,16 +1,11 @@
-from cProfile import label
-from email import message
-from inspect import getcomments
-from turtle import width
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import system.manager as smg
 from system.manager import data_quants
-import libs.math as math
-import system.constant as constant
 import numpy as np
 from matplotlib import ticker
 import libs.epoch as epoch
+import libs.math as math
 
 high_level_vars = ['combo_scalar','scalar_with_color','combo_vector']
 
@@ -39,7 +34,7 @@ default_plot_setting = {
     'legend.handletextpad': 0,
 }
 default_figsize = (6,3)
-default_fig_label_offset = 14
+default_fig_label_offset = 10
 
 
 
@@ -51,10 +46,7 @@ def set_plot_setting(var, settings):
 
 @ticker.FuncFormatter
 def slib_time_formatter(x, pos):
-    msg = epoch.convert_time(x, input='unix', output='%H:%M')
-    if pos == 0 or x % constant.secofday == 0:
-        msg += '\n'+epoch.convert_time(x, input='unix', output='%Y-%m-%d')
-#        msg += '\n'+epoch.convert_time(x, input='unix', output='%b %d %Y')
+    msg = epoch.convert_time(x, input='unix', output='%H:%M\n%Y-%m-%d')
     return msg
 
 
@@ -73,11 +65,6 @@ def get_plot_setting(var, key=None):
 # https://matplotlib.org/2.0.2/examples/showcase/anatomy.html
 
 
-def add_fig_label(ax, fig_label, offset=None):
-
-    if fig_label is None: fig_label = 'a)'
-    if offset is None: offset = default_fig_label_offset
-    ax.text(0,1, fig_label+offset*' ', va='top', ha='right', transform=ax.transAxes)
 
 def open(
     figsize=(6,4),
@@ -375,8 +362,8 @@ class Fig():
 
     def plot_scalar_with_color(self,
         ax, var,
-        colors=None,
-        labels='',
+        colors=[],
+        labels=[],
     ):
 
         vars = smg.get_data(var)
@@ -512,6 +499,8 @@ class Fig():
     def plot(self, vars=[], xrange=None, fig_labels=[],
         margins=[8,2,8,1],
         ypans=[],
+        xstep=None,
+        xticks=[],
     ):
 
 
@@ -528,6 +517,10 @@ class Fig():
             else:
                 x = smg.get_time(var)
             xrange = [min(x),max(x)]
+        else:
+            if type(xrange[0]) is str:
+                xrange = smg.prepare_time_range(xrange)
+            
         
         if len(fig_labels) != nvar:
             fig_labels = [chr(x+97)+')' for x in range(nvar)]
@@ -537,6 +530,87 @@ class Fig():
         axes = (self.panel_pos(nypan=nypan, margins=margins, ypans=ypans))[0]
         for var, ax, fl in zip(vars, axes, fig_labels):
             self.plot_single_var(ax, var, xrange=xrange, fig_label=fl)
+
+
+        # xticks.
+        if xstep is None:
+            xstep = get_xstep(xrange)
+        if len(xticks) == 0:
+            xticks = math.make_bins(xrange, xstep)
+
+        
+        # Set xrange and xticks.
+        for ax in axes:
+            ax.set_xlim(xrange)
+            ax.set_xticks(xticks)
+
+        # Convert unix time to string.
+        ax = axes[-1]
+        ax.xaxis.set_major_formatter(slib_time_formatter)
+
+        # Some xticks are not shown because they are out of xrange.
+        xticks = ax.get_xticks()
+        labels = np.array([label.get_text() for label in ax.get_xticklabels()])
+        label_index = (np.where(np.logical_and(xticks>=xrange[0], xticks<=xrange[1])))[0]
+
+        # For xticks in xrange, remove duplicate dates.
+        the_labels = labels[label_index]
+        nlabel = len(the_labels)
+        time_labels = list()
+        date_labels = list()
+        for i in range(nlabel):
+            tmp = the_labels[i].split('\n')
+            time_labels.append(tmp[0])
+            date_labels.append(tmp[1])
+        time_labels = np.array(time_labels)
+        date_labels = np.array(date_labels)
+        _, uniq_index = np.unique(date_labels, return_index=True)
+        mask = np.ones(nlabel, dtype=bool)
+        mask[uniq_index] = False
+        date_labels[np.where(mask == True)] = ''
+
+        # Set the new xlabels.
+        for i in range(nlabel):
+            the_labels[i] = time_labels[i]+'\n'+date_labels[i]
+        labels[label_index] = the_labels
+        ax.set_xticklabels(labels)
+
+        # Add a xlabel title.
+        xlabel_title = 'UT\nDate'
+        pos = ax.get_position()
+        xchsz, _ = self.abs_charsize
+        fig_xsz, _ = self.size
+        xchsz = xchsz/fig_xsz
+        rect = [pos.x0-xchsz*default_fig_label_offset,pos.y0,0,pos.y1-pos.y0]
+        ax_label = self.fig.add_axes(rect)
+        # Remove the axis line.
+        for t in ['top','bottom','right','left']:
+            ax_label.spines[t].set_visible(False)
+        # Remove y axis tick label and marker.
+        ax_label.yaxis.set_ticklabels([])
+        ax_label.tick_params(left=False)
+        ax_label.tick_params(right=False)
+        ax_label.tick_params(top=False)
+        ax_label.tick_params(bottom=False)
+
+        labels = [xlabel_title]
+        for i in range(1,len(ax_label.get_xticklabels())): labels.append('')
+        ax_label.set_xticklabels(labels, ha='left')
+
+        """
+        # One way is to manually print the tick labels.
+        label = ax.get_xticklabels()[label_index[0]]
+        xlabel_title = 'UT\nDate'
+        xchsz, ychsz = self.abs_charsize
+        fig_size = self.size
+        xchsz /= fig_size[0]
+        ychsz /= fig_size[1]
+        ax_pos = ax.get_position()
+        x = ax_pos.x0-default_fig_label_offset*xchsz
+        y = ax_pos.y0-0.5*ychsz
+        ax.text(x,y, xlabel_title, va='top', ha='left', transform=self.fig.transFigure)
+        """
+        
 
     
     def plot_single_var(self, ax, var, xrange=None, fig_label=None):
@@ -610,9 +684,25 @@ class Fig():
 
         if xrange is not None:
             ax.set_xlim(xrange)
+
         
         if fig_label is not None:
-            add_fig_label(ax, fig_label)
+            self.add_fig_label(ax, fig_label)
+
+
+    def add_fig_label(self, ax, fig_label, offset=None):
+
+        if fig_label is None: fig_label = 'a)'
+        if offset is None: offset = default_fig_label_offset
+
+        xchsz, ychsz = self.abs_charsize
+        fig_size = self.size
+        xchsz /= fig_size[0]
+        ychsz /= fig_size[1]
+        ax_pos = ax.get_position()
+        x = ax_pos.x0-default_fig_label_offset*xchsz
+        y = ax_pos.y1
+        ax.text(x,y, fig_label+offset*' ', va='top', ha='left', transform=self.fig.transFigure)
 
         
 
@@ -650,3 +740,21 @@ def get_color(
     colors = [cmap(x) for x in np.linspace(color_bottom,color_top, ncolor)]
     if reverse_color is True: colors.reverse()
     return colors
+
+
+def get_xstep(
+    xrange,
+    optimal_nxtick=5,
+):
+
+    duration = xrange[1]-xrange[0]
+    xsteps = np.array([1,2,3,4,5,
+        20,30,60,120,300,600,1200,1800,
+        3600,2*3600,6*3600,12*3600,24*3600])
+
+    nx = duration/xsteps
+    index = np.where(np.logical_and(nx>=1,nx<=optimal_nxtick))
+    if len(index) == 0:
+        return duration/(optimal_nxtick-1)
+
+    return min(xsteps[index])

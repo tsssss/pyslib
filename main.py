@@ -16,6 +16,7 @@ def main():
     probe = 'a'
     resolution = 60
 
+
     var_vector = read.ml.sw_v(time_range, coord='gsm')
     var_scalar = read.ml.sw_n(time_range)
     var_spec = read.ml.rbsp_en_spec(time_range, probe=probe, species='o')
@@ -56,8 +57,7 @@ def main():
     vars = [var_vector,flux_var,var_combo,var_combo2,var_scalar_with_color]
 #    vars = [var_vector,var_scalar,flux_var]
     smg.set_setting(var_spec, {'display_type':'flux'})
-    fig.plot(vars)
-
+    fig.plot(vars, xrange=time_range)
 
 
 
