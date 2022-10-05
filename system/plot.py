@@ -578,14 +578,25 @@ class Fig():
         mask[uniq_index] = False
         date_labels[np.where(mask == True)] = ''
 
+        # If all times are 00:00 then remove time.
+        if np.all(time_labels == '00:00'):
+            remove_time_label = True
+        else:
+            remove_time_label = False
+
+
         # Set the new xlabels.
-        for i in range(nlabel):
-            the_labels[i] = time_labels[i]+'\n'+date_labels[i]
+        if remove_time_label:
+            xlabel_title = 'Date'
+            the_labels = date_labels
+        else:
+            xlabel_title = 'UT\nDate'
+            for i in range(nlabel):
+                the_labels[i] = time_labels[i]+'\n'+date_labels[i]
         labels[label_index] = the_labels
         ax.set_xticklabels(labels)
 
         # Add a xlabel title.
-        xlabel_title = 'UT\nDate'
         pos = ax.get_position()
         xchsz, _ = self.abs_charsize
         fig_xsz, _ = self.size
