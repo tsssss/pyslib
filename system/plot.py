@@ -501,6 +501,7 @@ class Fig():
         ypans=[],
         xstep=None,
         xticks=[],
+        xminor=None,
     ):
 
 
@@ -536,13 +537,15 @@ class Fig():
         if xstep is None:
             xstep = get_xstep(xrange)
         if len(xticks) == 0:
-            xticks = math.make_bins(xrange, xstep)
+            xticks = math.make_bins(xrange, xstep, inner=True)
 
         
-        # Set xrange and xticks.
+        # Set xrange and xticks, xminor.
         for ax in axes:
             ax.set_xlim(xrange)
             ax.set_xticks(xticks)
+            if xminor is not None:
+                ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(xminor))
 
         # Convert unix time to string.
         ax = axes[-1]

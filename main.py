@@ -12,6 +12,7 @@ import numpy as np
 def main():
 
     time_range = ['2013-06-01','2013-06-02/12:00']
+    time_range = ['2017-03-01','2017-04-01']
     rbsp_probes = ['a','b']
     probe = 'a'
     resolution = 60
@@ -57,7 +58,7 @@ def main():
     vars = [var_vector,flux_var,var_combo,var_combo2,var_scalar_with_color]
 #    vars = [var_vector,var_scalar,flux_var]
     smg.set_setting(var_spec, {'display_type':'flux'})
-    fig.plot(vars, xrange=time_range)
+    fig.plot(vars, xrange=time_range, xstep=10*86400, xminor=10)
 
 
 

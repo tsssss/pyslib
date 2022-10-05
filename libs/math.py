@@ -5,7 +5,7 @@ def make_bins(range, step, inner=False):
 
     step0 = abs(step)
     range0 = [min(range),max(range)]
-    range1 = range0-(range0 % step0)
+    range1 = [x-(x % step0) for x in range0]
     if inner is True:
         if range1[0] < range0[0]: range1[0] += step0
         if range1[1] > range0[1]: range1[1] -= step0
