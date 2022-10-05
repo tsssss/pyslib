@@ -1,4 +1,3 @@
-from turtle import width
 import pytplot
 import read
 import system.plot as spl
@@ -47,6 +46,7 @@ def main():
     settings = {
         'display_type': 'scalar_with_color',
         'color_table': 'jet',
+        'zrange': [2,6],
     }
     lshell_var = read.ml.rbsp_lshell(time_range, probe=probe)
     smg.set_data(var_scalar_with_color,

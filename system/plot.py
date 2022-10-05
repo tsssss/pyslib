@@ -417,9 +417,9 @@ class Fig():
         cax = self.fig.add_axes(cbpos)
         cb = self.fig.colorbar(sc, cax=cax)
         cb.set_label(ztitle)
-        zrange = settings.get('zrange', None)
+        zrange = smg.get_setting(var, 'zrange')
         if zrange is not None:
-            cb.set_clim(zrange[0], zrange[1])
+            cb.mappable.set_clim(vmin=zrange[0], vmax=zrange[1])
 
 
     def plot_flux(self,
