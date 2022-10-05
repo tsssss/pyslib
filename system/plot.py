@@ -402,6 +402,9 @@ class Fig():
         yscale = settings.get('yscale', None)
         if yscale is not None:
             ax.set_yscale(yscale)
+        yrange = settings.get('yrange', None)
+        if yrange is not None:
+            ax.set_ylim(yrange[0], yrange[1])
         
         # Add colorbar.
         pos = ax.get_position()
@@ -414,6 +417,9 @@ class Fig():
         cax = self.fig.add_axes(cbpos)
         cb = self.fig.colorbar(sc, cax=cax)
         cb.set_label(ztitle)
+        zrange = settings.get('zrange', None)
+        if zrange is not None:
+            cb.set_clim(zrange[0], zrange[1])
 
 
     def plot_flux(self,
