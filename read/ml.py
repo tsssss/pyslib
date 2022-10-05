@@ -58,12 +58,10 @@ def asyd(time_range):
     return asyd_var
 
 def ae(time_range):
-    vars = ['au','al']
-    omni_var(time_range, vars)
 
-    au_var = 'omni_au'
+    au_var = au(time_range)
     au = smg.get_data(au_var)
-    al_var = 'omni_al'
+    al_var = al(time_range)
     al = smg.get_data(al_var)
 
     ae_var = 'omni_ae'
@@ -78,14 +76,11 @@ def ae(time_range):
     return ae_var
 
 
-
 def ao(time_range):
-    vars = ['au','al']
-    omni_var(time_range, vars)
 
-    au_var = 'omni_au'
+    au_var = au(time_range)
     au = smg.get_data(au_var)
-    al_var = 'omni_al'
+    al_var = al(time_range)
     al = smg.get_data(al_var)
 
     ao_var = 'omni_ao'
@@ -98,6 +93,32 @@ def ao(time_range):
     }
     smg.set_data(ao_var, ao, settings=settings)
     return ao_var
+
+
+def au(time_range):
+
+    omni_var(time_range, 'au')
+    au_var = 'omni_au'
+    settings = {
+        'display_type': 'scalar',
+        'short_name': 'AU',
+        'unit': 'nT',
+    }
+    smg.set_setting(au_var, settings=settings)
+    return au_var
+
+def al(time_range):
+
+    omni_var(time_range, 'al')
+    al_var = 'omni_al'
+    settings = {
+        'display_type': 'scalar',
+        'short_name': 'AL',
+        'unit': 'nT',
+    }
+    smg.set_setting(al_var, settings=settings)
+    return al_var
+
 
 
 def sw_b(time_range, coord='gse'):
