@@ -358,6 +358,7 @@ def rbsp_flux(
     probe=None,
     spec_var=None,
     energy=None,
+    species=None,
     output=None,
 ):
 
@@ -365,7 +366,7 @@ def rbsp_flux(
     energy_str = str(np.int64(np.round(energy)))
 
     if spec_var is None:
-        spec_var = rbsp_en_spec(time_range, probe)
+        spec_var = rbsp_en_spec(time_range, probe, species=species)
     assert smg.has_var(spec_var)
     flux_var = output
     if flux_var == None: flux_var = spec_var+'_'+energy_str+'eV'
