@@ -358,7 +358,7 @@ def rbsp_flux(
     probe=None,
     spec_var=None,
     energy=None,
-    species=None,
+    species='p',
     output=None,
 ):
 
