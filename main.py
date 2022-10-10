@@ -19,7 +19,10 @@ def main():
 
     var_vector = read.ml.sw_v(time_range, coord='gsm')
     var_scalar = read.ml.sw_n(time_range)
-    var_spec = read.ml.rbsp_en_spec(time_range, probe=probe, species='o')
+    species = 'o'
+    energy = 2835
+    var_spec = read.ml.rbsp_en_spec(time_range, probe=probe, species=species)
+    var_scalar = read.ml.rbsp_flux(time_range, probe=probe, species=species, energy=energy)
     energys = smg.get_data(smg.get_setting(var_spec,'energy_var'))
     smg.set_setting(var_spec, {'flux_index':np.linspace(0,len(energys)-1,5)})
     smg.set_setting(var_spec, {'color_table':'jet'})
