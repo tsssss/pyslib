@@ -110,11 +110,12 @@ class cdf():
     
     def __init__(self, filename):
         self.filename = filename
-        if os.path.exists(filename):
-            self._pycdf = pycdf.CDF(filename, create=False, readonly=False)
-        else:
-            self._pycdf = pycdf.CDF(filename, create=True)
+        if not os.path.exists(filename):
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            file = pycdf.CDF(filename, create=True)
+            file.close()
         
+        self._pycdf = pycdf.CDF(filename, create=False, readonly=False)
         _libpath, _library = pycdf.Library._find_lib()
         self.lib = pycdf.Library(_libpath, _library)
         self._cdflib = cdflib.CDF(filename)
@@ -277,6 +278,7 @@ class cdf():
         data_type=None,
         settings=None,
         save_as_one=False,
+        rec_vary=None,
     ):
         """
         Save data and create a var.
@@ -294,9 +296,10 @@ class cdf():
         if type(value[0]) == 'str': numelem = max(len(value))
 
         # Figure out if record varies.
-        rec_vary = True
-        if data_ndim == 1: rec_vary = False
-        if data_dims[0] == 1: rec_vary = False
+        if rec_vary is None:
+            rec_vary = True
+#            if data_ndim == 1: rec_vary = False
+            if data_dims[0] == 1: rec_vary = False
         if save_as_one: rec_vary = False
 
         # Figure out dimension.
@@ -306,6 +309,10 @@ class cdf():
         else:
             dimensions = data_dims
 
+        # data type.
+        if data_type is not None:
+            if type(data_type) is str:
+                data_type = get_cdf_type_code(data_type)
 
         if len(dimensions) == 0:
             self._pycdf.new(var, data=value, type=data_type,
