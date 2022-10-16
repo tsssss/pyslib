@@ -390,8 +390,8 @@ def prepare_files(request):
 
 
     # file_times. This is used to replace pattern to actual file names.
-    file_times = request.get('file_times', None)
-    if file_times is None:
+    file_times = request.get('file_times', [])
+    if len(file_times) == 0:
         # Need to get file_times from time_range.
 
         # Cadence. By default there is one file per day.
@@ -407,6 +407,8 @@ def prepare_files(request):
         validated_time_range = validate_time_range(time_range, valid_range)
 
         file_times = break_down_times(validated_time_range, cadence)
+        request['file_times'] = file_times
+    else: request['file_times'] = []
 
 
     # local_files. This is the main output we want.
@@ -416,12 +418,15 @@ def prepare_files(request):
         local_pattern = request.get('local_pattern', None)
         if not (local_pattern is None or file_times is None):
             local_files = epoch.convert_time(file_times, input='unix', output=local_pattern)
+            request['local_files'] = local_files
+    else: request['local_files'] = []
 
 
     # Check if local files exist.
     exist_files, nonexist_files = check_file_existence(local_files)
     if len(nonexist_files) == 0:
         request['files'] = exist_files
+        request['nonexist_files'] = []
         return exist_files
 
     
@@ -432,12 +437,17 @@ def prepare_files(request):
         remote_pattern = request.get('remote_pattern', None)
         if not (remote_pattern is None or file_times is None):
             remote_files = epoch.convert_time(file_times, input='unix', output=remote_pattern)
+            request['remote_files'] = remote_files
+    else: request['remote_files'] = []
 
 
     # Sync with the server.
-    downloaded_files = []
-    for remote_file, local_file in zip(remote_files,local_files):
-        downloaded_files.append(system.download_file(remote_file,local_file))
+    if len(remote_files) != 0:
+        downloaded_files = []
+        for remote_file, local_file in zip(remote_files,local_files):
+            downloaded_files.append(system.download_file(remote_file,local_file))
+    else:
+        downloaded_files = local_files
 
     # Check if local files exist again.
     exist_files, nonexist_files = check_file_existence(downloaded_files)

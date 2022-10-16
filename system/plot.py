@@ -773,7 +773,7 @@ def get_xstep(
         3600,2*3600,6*3600,12*3600,24*3600])
 
     nx = duration/xsteps
-    index = np.where(np.logical_and(nx>=1,nx<=optimal_nxtick))
+    index = (np.where(np.logical_and(nx>=1,nx<=optimal_nxtick)))[0]
     if len(index) == 0:
         return duration/(optimal_nxtick-1)
 
