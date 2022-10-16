@@ -37,7 +37,7 @@ def to_time(times, message):
         _times = Time(times, format=msg)
     except:
         # To handle other string formats.
-        _times = Time(time_double(times, fmt=message), format='unix')
+        _times = Time(time_double(times), format='unix')
 
     return _times
         
@@ -68,4 +68,7 @@ def convert_time(
     input=None,
     output=None,
 ):
-    return from_time(to_time(times, input), output)
+    try:
+        return from_time(to_time(times, input), output)
+    except:
+        return from_time(to_time(list(times), input), output)
