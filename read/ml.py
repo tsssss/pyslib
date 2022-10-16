@@ -1,8 +1,11 @@
 import system.manager as smg
 import numpy as np
 import mission
+import libs.cdf
 
 rbsp_species_info = {'e':'e-', 'o':'O+', 'p':'H+', 'he':'He+'}
+
+
 
 def symh(time_range):
 
@@ -241,6 +244,68 @@ def omni_var(
     return smg.read_var(var_request)
 
 
+def sme(time_range):
+    input_id = 'sme'
+    var = sm_aei_var(time_range, input_id)
+    smg.set_setting(var, {
+        'display_type': 'scalar',
+        'unit': 'nT',
+        'short_name': input_id.upper(),
+    })
+    return var
+
+def smo(time_range):
+    input_id = 'smo'
+    var = sm_aei_var(time_range, input_id)
+    smg.set_setting(var, {
+        'display_type': 'scalar',
+        'unit': 'nT',
+        'short_name': input_id.upper(),
+    })
+    return var
+
+def smu(time_range):
+    input_id = 'smu'
+    var = sm_aei_var(time_range, input_id)
+    smg.set_setting(var, {
+        'display_type': 'scalar',
+        'unit': 'nT',
+        'short_name': input_id.upper(),
+    })
+    return var
+
+def sml(time_range):
+    input_id = 'sml'
+    var = sm_aei_var(time_range, input_id)
+    smg.set_setting(var, {
+        'display_type': 'scalar',
+        'unit': 'nT',
+        'short_name': input_id.upper(),
+    })
+    return var
+
+
+def sm_aei_var(
+    input_time_range,
+    var=None,
+):
+
+    time_range = smg.prepare_time_range(input_time_range)
+    files = mission.ml.supermag.aei(time_range)
+
+    prefix = 'sm_'
+    if type(var) is str: in_vars = [var]
+    else: in_vars = var
+
+    var_request = {
+        'files': files,
+        'in_vars': in_vars,
+        'time_range': time_range,
+    }
+    return smg.read_var(var_request)
+
+
+
 
 
 def rbsp_mlt(
@@ -400,6 +465,19 @@ def rbsp_flux(
     return flux_var
 
 
+def rbsp_hope_energy(
+    input_time_range=['2013','2014'],
+    probe='a',
+    species='p',
+):
+
+    time_range = smg.prepare_time_range(input_time_range)
+    files = mission.ml.rbsp.hope_en_spec(time_range, probe=probe)
+    energy_var = 'energy_bins_'+species
+    cdfid = libs.cdf.cdf(files[0])
+    return cdfid.read_var(energy_var)
+
+
 def rbsp_en_spec(
     input_time_range,
     probe='a',
@@ -428,7 +506,7 @@ def rbsp_en_spec(
         'display_type': 'spec',
         'zlog': True,
         'ylog': True,
-        'unit': '#/s-cm$^{-2}$-sr-keV',
+        'unit': '#/s-cm$^{2}$-sr-keV',
         'energy_var': energy_var,
         'energy_unit': energy_settings['UNITS'],
         'species': species,

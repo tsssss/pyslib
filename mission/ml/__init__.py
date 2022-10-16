@@ -10,3 +10,4 @@ time_step = 5*60    # sec.
 
 from . import rbsp
 from . import omni
+from . import supermag
