@@ -58,8 +58,8 @@ def load_file(
     id = 'cdaweb%hourly'
     base_name = 'omni2_h0_mrg1hr_%Y%m01_'+version+'.cdf'
     file_infos[id] = {
-        'local_pattern': os.path.join(local_data_dir,'hourly','%Y',base_name),
-        'remote_pattern': os.path.join(remote_data_dir,'hourly','%Y',base_name),
+        'local_pattern': os.path.join(local_data_dir,'omni_cdaweb','hourly','%Y',base_name),
+        'remote_pattern': os.path.join(remote_data_dir,'omni_cdaweb','hourly','%Y',base_name),
         'valid_range': smg.prepare_time_range(valid_range(id)),
     }
 
@@ -67,8 +67,8 @@ def load_file(
     id = 'cdaweb%hro'
     base_name = 'omni_hro_'+resolution+'_%Y%m01_'+version+'.cdf'
     file_infos[id] = {
-        'local_pattern': os.path.join(local_data_dir,'hro_'+resolution,'%Y',base_name),
-        'remote_pattern': os.path.join(remote_data_dir,'hro_'+resolution,'%Y',base_name),
+        'local_pattern': os.path.join(local_data_dir,'omni_cdaweb','hro_'+resolution,'%Y',base_name),
+        'remote_pattern': os.path.join(remote_data_dir,'omni_cdaweb','hro_'+resolution,'%Y',base_name),
         'valid_range': smg.prepare_time_range(valid_range(id)),
     }
 
@@ -76,8 +76,8 @@ def load_file(
     id = 'cdaweb%hro2'
     base_name = 'omni_hro2_'+resolution+'_%Y%m01_'+version+'.cdf'
     file_infos[id] = {
-        'local_pattern': os.path.join(local_data_dir,'hro2_'+resolution,'%Y',base_name),
-        'remote_pattern': os.path.join(remote_data_dir,'hro2_'+resolution,'%Y',base_name),
+        'local_pattern': os.path.join(local_data_dir,'omni_cdaweb','hro2_'+resolution,'%Y',base_name),
+        'remote_pattern': os.path.join(remote_data_dir,'omni_cdaweb','hro2_'+resolution,'%Y',base_name),
         'cadence': 'month',
         'valid_range': smg.prepare_time_range(valid_range(id)),
     }
