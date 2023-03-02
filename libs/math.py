@@ -1,6 +1,38 @@
 import itertools
 import numpy as np
 
+def where(a, msg, b):
+
+    if msg == 'gt':   return np.where(a>b)
+    elif msg == 'ge': return np.where(a>=b)
+    elif msg == 'lt': return np.where(a<b)
+    elif msg == 'le': return np.where(a<=b)
+    elif msg == '>':  return np.where(a>b)
+    elif msg == '>=': return np.where(a>=b)
+    elif msg == ')':  return np.where(a<b)
+    elif msg == ']':  return np.where(a<=b)
+    elif msg == '(':  return np.where(a>b)
+    elif msg == '[':  return np.where(a>=b)
+    elif msg == '<':  return np.where(a<b)
+    elif msg == '<=': return np.where(a<=b)
+    elif msg == 'eq': return np.where(a==b)
+    elif msg == 'ne': return np.where(a!=b)
+    elif msg == '==': return np.where(a==b)
+    elif msg == '!=': return np.where(a!=b)
+
+    if msg == '()':   index = np.where(np.logical_and(a>b[0],a<b[1]))
+    elif msg == '(]': index = np.where(np.logical_and(a>b[0],a<=b[1]))
+    elif msg == '[)': index = np.where(np.logical_and(a>=b[0],a<b[1]))
+    elif msg == '[]': index = np.where(np.logical_and(a>=b[0],a<=b[1]))
+    elif msg == ')(': index = np.where(np.logical_and(a<b[0],a>b[1]))
+    elif msg == '](': index = np.where(np.logical_and(a<=b[0],a>b[1]))
+    elif msg == ')[': index = np.where(np.logical_and(a<b[0],a>=b[1]))
+    elif msg == '][': index = np.where(np.logical_and(a<=b[0],a>=b[1]))
+    index = index[0]
+    if len(index) == 1: index = index[0]
+    return index
+
+
 def make_bins(range, step, inner=False):
 
     step0 = abs(step)

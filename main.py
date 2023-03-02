@@ -13,8 +13,19 @@ def main():
     time_range = ['2013-06-01','2013-06-02/12:00']
     time_range = ['2017-03-01','2017-04-01']
     rbsp_probes = ['a','b']
-    probe = 'a'
     resolution = 60
+
+    time_range = ['2013-05-01','2013-05-02']
+    probe = 'b'
+    species = 'p'
+    hope_l2_var = read.rbsp.hope_l2_flux(time_range, probe, species)
+
+    times = smg.get_time(hope_l2_var)
+    fluxs = smg.get_data(hope_l2_var)
+    energy_var = smg.get_setting(hope_l2_var, key='energy')
+    energys = smg.get_data(energy_var)
+    epoch_delta_var = smg.get_setting(hope_l2_var, key='epoch_delta')
+    dtimes = smg.get_data(epoch_delta_var)*1e-3
 
 
     var_vector = read.ml.sw_v(time_range, coord='gsm')
@@ -27,7 +38,7 @@ def main():
     smg.set_setting(var_spec, {'flux_index':np.linspace(0,len(energys)-1,5)})
     smg.set_setting(var_spec, {'color_table':'jet'})
     energy = 1000
-    flux_var = read.ml.rbsp_flux(time_range, probe=probe, energy=energy)
+    flux_var = read.ml.rbsp_flux(time_range, probe=probe, energy=energy, species=species)
 
     var_combo = 'ae_dst'
     settings = {
@@ -63,18 +74,6 @@ def main():
     smg.set_setting(var_spec, {'display_type':'flux'})
     fig.plot(vars, xrange=time_range, xstep=10*86400, xminor=10)
 
-
-
-
-    ae_var = read.omni.ae(time_range)
-    spl.plot(ae_var)
-
-    r_vars = list()
-    for probe in rbsp_probes:
-        r_vars.append(read.rbsp.orbit(time_range, probe, coord='gsm', resolution=resolution))
-    
-
-    r_var = r_vars[0]
 
     pytplot.tplot_names()
 

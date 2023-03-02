@@ -64,10 +64,12 @@ def from_time(times, message):
     
 
 def convert_time(
-    times,
+    times=None,
     input=None,
     output=None,
 ):
+    if times is None: return None
+
     try:
         return from_time(to_time(times, input), output)
     except:

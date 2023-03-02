@@ -16,7 +16,11 @@ import libs.vector as vector
 
 
 # To store data in memory.
-data_quants = dict()
+from pyslib import data_quants
+
+def vars():
+    """Get all vars saved in the system."""
+    return data_quants.keys()
 
 def update_data(var, data):
     data_quants[var].values = data
@@ -288,7 +292,10 @@ def cdf_read_var(
                 cdfid = cdf(file)
                 # Read all times and trim to the given time range.
                 t = cdfid.read_var(time_var)
-                index = (np.where(np.logical_and(t>=tr[0], t<=tr[1])))[0]
+                if tr is None:
+                    index = np.arange(len(t))
+                else:
+                    index = (np.where(np.logical_and(t>=tr[0], t<=tr[1])))[0]
                 if len(index) == 0: continue
                 range = [np.min(index),np.max(index)]
                 t = t[index]

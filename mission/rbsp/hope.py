@@ -1,6 +1,6 @@
 import os
 from mission import rbsp
-import libs.system as system
+import system.manager as smg
 
 valid_range = {
     'a': ['2012-10-25','2019-10-14/24:00'],
@@ -29,7 +29,7 @@ def load_file(
     prefix = 'rbsp'+probe+'_'
     file_request = rbsp.file_request(input_time_range, probe)
     if file_times is not None: file_request['file_times'] = file_times
-    file_request['valid_range'] = system.prepare_time_range(valid_range[probe])
+    file_request['valid_range'] = smg.prepare_time_range(valid_range[probe])
 
 
     # A look up dictionary containing the info of remote and local data locations.
@@ -61,7 +61,7 @@ def load_file(
     base_name = prefix+release+'_ect-hope-sci-l2_%Y%m%d_'+version+'.cdf'
     local_path = os.path.join(rbspx,'hope','level2','sectors_'+release,'%Y')
     remote_path = os.path.join(rbspx,'l2','ect','hope','sectors',release,'%Y')
-    file_infos['l2%sector'] = {
+    file_infos[id] = {
         'local_pattern': os.path.join(local_data_dir,local_path,base_name),
         'remote_pattern': os.path.join(remote_data_dir,remote_path,base_name),
     }
@@ -72,5 +72,5 @@ def load_file(
     for key in file_info:
         file_request[key] = file_info[key]
 
-    files = system.prepare_files(file_request) 
+    files = smg.prepare_files(file_request) 
     return files

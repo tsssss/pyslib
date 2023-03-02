@@ -31,6 +31,8 @@ def file_request(
 
 
 
-from . import hope
 from . import efw
+from . import emfisis
+from . import hope
+from . import mageis
 from . import ssc

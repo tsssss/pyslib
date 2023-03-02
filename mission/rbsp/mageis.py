@@ -1,6 +1,6 @@
 import os
-from .. import rbsp
-from ... import utils
+from mission import rbsp
+import system.manager as smg
 
 valid_range = {
     'a': ['2012-09-07','2019-10-14/24:00'],
@@ -24,7 +24,7 @@ def load_file(
     prefix = 'rbsp'+probe+'_'
     file_request = rbsp.file_request(input_time_range, probe)
     if file_times is not None: file_request['file_times'] = file_times
-    file_request['valid_range'] = utils.prepare_time_range(valid_range[probe])
+    file_request['valid_range'] = smg.prepare_time_range(valid_range[probe])
 
 
     # A look up dictionary containing the info of remote and local data locations.
@@ -44,5 +44,5 @@ def load_file(
     for key in file_info:
         file_request[key] = file_info[key]
 
-    files = utils.prepare_files(file_request) 
+    files = smg.prepare_files(file_request) 
     return files

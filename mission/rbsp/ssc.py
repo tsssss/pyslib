@@ -1,4 +1,4 @@
-from .. import rbsp
+from mission import rbsp
 
 # Spacecraft orbit.
 def load_file(
